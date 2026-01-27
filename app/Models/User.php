@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enum\roles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -22,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role'
     ];
 
     /**
@@ -47,6 +49,24 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'role'=> roles::class,
         ];
+    }
+
+    public function isAdmin(){
+        return $this->role === roles::ADMIN;
+    }
+
+
+    public function isStaff(){
+        return $this->role === roles::STAFF;
+    }
+
+    public function isSupperAdmin(){
+        return $this->role === roles::SUPPERADMIN;
+    }
+
+    public function isGuest(){
+        return $this->role === roles::GUEST;
     }
 }
