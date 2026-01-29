@@ -39,6 +39,13 @@ class AppServiceProvider extends ServiceProvider
             return $user->role === roles::SUPPERADMIN;
         });
 
+        Gate::define('view-room-management', function(User $user){
+            return in_array($user->role,[
+                roles::ADMIN,
+                roles::SUPPERADMIN,
+            ]); 
+        });
+
         Gate::define('access-dashboard',function(User $user){
             return  in_array($user->role,[
                 roles::ADMIN,

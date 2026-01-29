@@ -16,7 +16,7 @@ Route::middleware(['auth', 'verified', 'can:access-dashboard'])->group(function 
         return Inertia::render('dashboard');
     })->name('dashboard');
 
-    Route::resource('rooms', RoomsController::class);
+    Route::resource('rooms', RoomsController::class)->middleware(['can:view-room-management']);
     
 });
 
