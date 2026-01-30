@@ -1,7 +1,7 @@
-import { dashboard, login, register } from '@/routes';
+import { dashboard, guest, login, register } from '@/routes';
 import type { SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { route } from 'ziggy-js';
+
 
 export default function Welcome({
     canRegister = true,
@@ -28,7 +28,7 @@ export default function Welcome({
                                 {auth.user.role === 'guest' ? (
                                     /* GUEST VIEW */
                                     <Link
-                                        href={route('guest')} // Assumes you have Ziggy route helper setup
+                                        href={guest.url()} // Assumes you have Ziggy route helper setup
                                         className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                                     >
                                         Book now
@@ -36,7 +36,7 @@ export default function Welcome({
                                 ) : (
                                     /* ADMIN/STAFF VIEW */
                                     <Link
-                                        href={route('dashboard')}
+                                        href={dashboard.url()}
                                         className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                                     >
                                         Dashboard
@@ -47,14 +47,14 @@ export default function Welcome({
                             // NOT LOGGED IN (Guest/Visitor)
                             <>
                                 <Link
-                                    href={route('login')}
+                                    href={login.url()}
                                     className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#19140035] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
                                 >
                                     Log in
                                 </Link>
                                 {canRegister && (
                                     <Link
-                                        href={route('register')}
+                                        href={register.url()}
                                         className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                                     >
                                         Register

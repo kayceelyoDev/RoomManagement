@@ -27,32 +27,32 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {   
-        Gate::define('acces-admin',function(User $user){
-            return $user->role === roles::ADMIN;
-        });
+        // Gate::define('acces-admin',function(User $user){
+        //     return $user->role === roles::ADMIN;
+        // });
 
-        Gate::define('acces-staff',function(User $user){
-            return $user->role === roles::STAFF;
-        });
+        // Gate::define('acces-staff',function(User $user){
+        //     return $user->role === roles::STAFF;
+        // });
 
-        Gate::define('acces-supperAdmin',function(User $user){
-            return $user->role === roles::SUPPERADMIN;
-        });
+        // Gate::define('acces-supperAdmin',function(User $user){
+        //     return $user->role === roles::SUPPERADMIN;
+        // });
 
-        Gate::define('view-room-management', function(User $user){
-            return in_array($user->role,[
-                roles::ADMIN,
-                roles::SUPPERADMIN,
-            ]); 
-        });
+        // Gate::define('view-room-management', function(User $user){
+        //     return in_array($user->role,[
+        //         roles::ADMIN,
+        //         roles::SUPPERADMIN,
+        //     ]); 
+        // });
 
-        Gate::define('access-dashboard',function(User $user){
-            return  in_array($user->role,[
-                roles::ADMIN,
-                roles::STAFF,
-                roles::SUPPERADMIN,
-            ]);
-        });
+        // Gate::define('access-dashboard',function(User $user){
+        //     return  in_array($user->role,[
+        //         roles::ADMIN,
+        //         roles::STAFF,
+        //         roles::SUPPERADMIN,
+        //     ]);
+        // });
 
         Gate::define('acces-guest',function(User $user){
             return $user->role === roles::GUEST;

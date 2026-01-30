@@ -53,6 +53,10 @@ class User extends Authenticatable
         ];
     }
 
+    public function rooms(){
+        return $this->belongsToMany(Rooms::class);
+    }
+
     public function isAdmin(){
         return $this->role === roles::ADMIN;
     }

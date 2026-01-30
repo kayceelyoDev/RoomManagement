@@ -39,20 +39,20 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->instance(LoginResponseContract::class, new class implements LoginResponseContract {
             public function toResponse($request)
             {
-                // Handle JSON/API requests
+                
                 if ($request->wantsJson()) {
                     return response()->json(['two_factor' => false]);
                 }
 
-                // Redirect Logic
+                
                 $user = $request->user();
 
-                // If user is a GUEST, go to guest page
+                
                 if ($user->role === roles::GUEST) {
                     return redirect()->route('guest');
                 }
 
-                // Everyone else (Admin, Staff, SupperAdmin) goes to Dashboard
+                
                 return redirect()->route('dashboard');
             }
         });
