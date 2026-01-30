@@ -24,18 +24,12 @@ Route::middleware(['auth', 'verified','role'])->group(function () {
 Route::middleware(['auth', 'verified'])->group(function(){ 
     
     Route::get('guestpage', function(){
-
-        // 2. Now this check will actually run
-        // Note: Ensure the spelling matches your Gate definition ('acces' vs 'access')
-        if (! Gate::allows('acces-guest')) {
-            
-            // 3. And this redirect will work
+        if (! Gate::allows('acces-guest')) { 
             return redirect()->route('error')->with('error', 'Guests only!');
         }
-
         return Inertia::render('GuestPage');
-        
     })->name('guest');
+    
 });
 
 Route::get('/test-error', fn () => Inertia::render('error/ErrorPage'))->name('error');
