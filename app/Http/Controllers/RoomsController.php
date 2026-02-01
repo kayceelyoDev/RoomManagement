@@ -17,8 +17,26 @@ class RoomsController extends Controller
      */
     public function index()
     {
-        //
-        return Inertia::render('rooms/RoomPage');
+        $rooms = Rooms::latest()
+            ->get()
+            ->map(function ($room) {
+                return [
+                    'id' => $room->id,
+                    'room_name' => $room->room_name,
+                    'room_description' => $room->room_description,
+                    'room_price' => (float) $room->room_price,
+                    'status' => $room->status,
+                    'user_id' => $room->user_id,
+                    // Ensure image URL is always a full public path
+                    'img_url' => $room->img_url
+                        ? asset('storage/' . $room->img_url)
+                        : asset('images/placeholder.png'),
+                ];
+            });
+
+        return inertia('rooms/DisplayRoom', [
+            'rooms' => $rooms
+        ]);
     }
 
     /**
@@ -27,6 +45,7 @@ class RoomsController extends Controller
     public function create()
     {
         //
+        return Inertia::render('rooms/RoomPage');
     }
 
     /**
@@ -34,16 +53,18 @@ class RoomsController extends Controller
      */
     public function store(RoomRequest $roomrequest, RoomServices $roomServices)
     {
-        
+
         $rooms = $roomrequest->validated();
-        $rooms['user_id']= Auth::id();
+        $rooms['user_id'] = Auth::id();
         $path = null;
-        if($roomrequest->hasFile('img_url')){
-        $path = $roomrequest->file('img_url')->store('room','public');
+        if ($roomrequest->hasFile('img_url')) {
+            $path = $roomrequest->file('img_url')->store('room', 'public');
         }
         $rooms['img_url'] = $path;
 
         $roomServices->createRoom($rooms);
+
+        return redirect()->route('rooms.index');
     }
 
     /**
@@ -65,9 +86,26 @@ class RoomsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Rooms $rooms)
+    public function update(RoomRequest $roomrequest, RoomServices $roomServices, Rooms $room)
     {
-        //
+        $data = $roomrequest->validated();
+
+
+        $data['user_id'] = Auth::id();
+
+
+
+        if (isset($data['img_url']) && $data['img_url'] instanceof \Illuminate\Http\UploadedFile) {
+
+            $data['img_url'] = $data['img_url']->store('room', 'public');
+        } else {
+
+            unset($data['img_url']);
+        }
+
+        $roomServices->update($room, $data);
+
+        return redirect()->back()->with('success', 'Room updated successfully!');
     }
 
     /**

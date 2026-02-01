@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout'
 import { store } from '@/routes/login';
+import rooms from '@/routes/rooms';
 import { BreadcrumbItem } from '@/types';
 import { Form, Head, useForm } from '@inertiajs/react'
 import React, { FormEventHandler } from 'react'
@@ -28,7 +29,7 @@ export default function RoomPage() {
   const breadcrumbs: BreadcrumbItem[] = [
     {
       title: 'Manage Rooms',
-      href: route('rooms.index'),
+      href: rooms.create.url(),
     },
   ];
 

@@ -27,7 +27,10 @@ class RoomRequest extends FormRequest
             'room_name'=>'nullable',
             'room_description'=>'nullable',
             'room_price'=>'nullable',
-            'img_url' => ['required', 'image'],
+            'img_url' => $this->isMethod('put') || $this->isMethod('patch') 
+                        ? 'nullable|image|mimes:jpg,jpeg,png|max:2048' 
+                        : 'required|image|mimes:jpg,jpeg,png|max:2048',
+            'status' => 'nullable',
         ];
     }
 }
