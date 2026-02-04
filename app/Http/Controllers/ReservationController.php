@@ -21,28 +21,38 @@ class ReservationController extends Controller
     {
         $search = $request->input('search');
 
-        // 1. Fetch Reservations with Search & Relationships
+        // 1. Fetch Reservations List (for the main table)
         $reservations = Reservation::with(['room', 'services'])
             ->when($search, function ($query, $search) {
-                $query->where('contact_number', 'like', "%{$search}%")
+                $query->where('guest_name', 'like', "%{$search}%")
+                    ->orWhere('contact_number', 'like', "%{$search}%")
                     ->orWhere('status', 'like', "%{$search}%")
-                    // Search by Room Name via relationship
                     ->orWhereHas('room', function ($q) use ($search) {
                         $q->where('room_name', 'like', "%{$search}%");
                     });
             })
             ->latest()
-            ->get(); // Or ->paginate(10) if you want pagination
+            ->get();
 
-        // 2. Fetch dependencies
-        $rooms = Rooms::latest()->with('roomCategory')->get();
+        // 2. Fetch Rooms with Categories AND Active Reservations
+        // We filter reservations to only include active ones (not cancelled) 
+        // and those that end in the future to keep the payload size manageable.
+        $rooms = Rooms::with([
+            'roomCategory',
+            'reservations' => function ($query) {
+                $query->where('status', '!=', 'cancelled')
+                    ->where('check_out_date', '>=', now()) // Only needed for availability check
+                    ->select('id', 'room_id', 'check_in_date', 'check_out_date', 'status'); // Select only needed columns
+            }
+        ])->get();
+
         $services = Services::all();
 
         return Inertia::render('reservations/ReservationPage', [
-            'reservations' => $reservations, // <-- Pass this to frontend
+            'reservations' => $reservations,
             'rooms' => $rooms,
             'services' => $services,
-            'filters' => ['search' => $search] // Pass back search term to keep input filled
+            'filters' => ['search' => $search]
         ]);
     }
     /**
@@ -61,9 +71,10 @@ class ReservationController extends Controller
         $data = $request->validated();
         $data['user_id'] = Auth::id();
 
+        // The service will throw a ValidationException if dates conflict
         $services->createReservation($data);
 
-        return redirect('reservation');
+        return redirect()->route('reservation.index')->with('success', 'Reservation created successfully.');
     }
 
     /**
@@ -85,9 +96,14 @@ class ReservationController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Reservation $reservation)
+    public function update(ReservationRequest $request, Reservation $reservation, ReservationServices $services)
     {
-        //
+        $data = $request->validated();
+
+        // This handles conflict checking + data update + pivot sync
+        $services->updateReservation($reservation, $data);
+
+        return redirect()->back()->with('success', 'Reservation updated successfully.');
     }
 
     /**
@@ -95,6 +111,9 @@ class ReservationController extends Controller
      */
     public function destroy(Reservation $reservation)
     {
-        //
+        $reservation->services()->detach(); // Clean up pivot
+        $reservation->delete();
+
+        return redirect()->back()->with('success', 'Reservation deleted.');
     }
 }
