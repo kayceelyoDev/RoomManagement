@@ -9,7 +9,7 @@ import AuthLayout from '@/layouts/auth-layout';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, useForm } from '@inertiajs/react';
 
 type Props = {
     status?: string;
@@ -22,6 +22,12 @@ export default function Login({
     canResetPassword,
     canRegister,
 }: Props) {
+    const form = useForm({
+        email: '',
+        password: '',
+        remember: false,
+    });
+
     return (
         <AuthLayout
             title="Log in to your account"
@@ -30,7 +36,8 @@ export default function Login({
             <Head title="Log in" />
 
             <Form
-                {...store.form()}
+                method="post"
+                action={store()}
                 resetOnSuccess={['password']}
                 className="flex flex-col gap-6"
             >

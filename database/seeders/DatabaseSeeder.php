@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Enum\roles;
+use App\Models\Reservation;
+use App\Models\Service;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -21,6 +23,13 @@ class DatabaseSeeder extends Seeder
             'email' => 'Admin@gmail.com',
             'password'=>'admin123',
             'role' => roles::ADMIN,
+        ]);
+
+       $this->call([
+            RoomCategorySeeder::class,
+            ServicesSeeder::class,
+            RoomsSeeder::class,       
+            ReservationSeeder::class, 
         ]);
     }
 }
