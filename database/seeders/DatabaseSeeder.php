@@ -25,11 +25,11 @@ class DatabaseSeeder extends Seeder
             'role' => roles::ADMIN,
         ]);
 
-       $this->call([
-            RoomCategorySeeder::class,
-            ServicesSeeder::class,
-            RoomsSeeder::class,       
-            ReservationSeeder::class, 
-        ]);
+    //    $this->call([
+    //         RoomCategorySeeder::class,
+    //         ServicesSeeder::class,
+    //         RoomsSeeder::class,       
+    //         ReservationSeeder::class, 
+    //     ]);
     }
 }
