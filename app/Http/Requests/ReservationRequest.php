@@ -24,7 +24,7 @@ class ReservationRequest extends FormRequest
             'room_id' => ['required', 'exists:rooms,id'], // Ensures the room actually exists
            'contact_number' => ['required', 'digits:11'],
             'total_guest' => ['required', 'integer', 'min:1'],
-            
+            'guest_name'=>['required'],
             
             // 2. Date Logic
             'check_in_date' => ['required', 'date'],

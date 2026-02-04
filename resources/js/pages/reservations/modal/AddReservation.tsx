@@ -14,7 +14,8 @@ import {
     ConciergeBell,
     Plus,
     Minus,
-    Users
+    Users,
+    User // Added User icon
 } from 'lucide-react';
 import reservation from '@/routes/reservation';
 
@@ -55,9 +56,9 @@ export default function AddReservation({ isOpen, onClose, rooms = [], services =
 
     const { data, setData, post, processing, errors, reset } = useForm({
         room_id: '',
+        guest_name: '', // Added guest_name to state
         contact_number: '',
         total_guest: 1,
-        // Removed extra_person
         check_in_date: '',
         check_out_date: '',
         status: 'pending',
@@ -191,7 +192,7 @@ export default function AddReservation({ isOpen, onClose, rooms = [], services =
 
                                     <form id="reservation-form" onSubmit={submit} className="space-y-6">
 
-                                        {/* Room & Contact */}
+                                        {/* Room & Guest Info */}
                                         <div className="grid grid-cols-1 gap-6">
                                             <div>
                                                 <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-2">
@@ -210,6 +211,21 @@ export default function AddReservation({ isOpen, onClose, rooms = [], services =
                                                     ))}
                                                 </select>
                                                 <ErrorMessage message={errors.room_id} />
+                                            </div>
+
+                                            {/* NEW GUEST NAME INPUT */}
+                                            <div>
+                                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-2">
+                                                    <User className="size-4" /> Guest Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={data.guest_name}
+                                                    onChange={e => setData('guest_name', e.target.value)}
+                                                    className={`w-full rounded-lg border-gray-300 bg-gray-50 p-2.5 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white ${errors.guest_name ? 'border-red-500' : ''}`}
+                                                    placeholder="Enter guest's full name"
+                                                />
+                                                <ErrorMessage message={errors.guest_name} />
                                             </div>
 
                                             <div>
