@@ -5,7 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import rooms from '@/routes/rooms';
 import { BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import React, { FormEventHandler } from 'react';
+import React, { FormEventHandler, useState } from 'react';
 import { route } from 'ziggy-js';
 
 // Define the shape of a Category (passed from Laravel)
@@ -21,7 +21,10 @@ interface Props {
 }
 
 export default function RoomPage({ categories }: Props) {
-    const { data, setData, post, processing, errors } = useForm({
+    // 1. State for local image preview
+    const [preview, setPreview] = useState<string | null>(null);
+
+    const { data, setData, post, processing, errors, reset } = useForm({
         room_categories_id: '',
         room_name: '',
         room_description: '',
@@ -29,7 +32,7 @@ export default function RoomPage({ categories }: Props) {
         max_extra_person: '',
         room_amenities: '',
         type_of_bed: '',
-        status: 'available', // Default status
+        status: 'available', 
     });
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -39,12 +42,35 @@ export default function RoomPage({ categories }: Props) {
         },
     ];
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-        post(route('rooms.store'));
+    // 2. Handle file selection and preview generation
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] || null;
+        setData('img_url', file);
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            setPreview(null);
+        }
     };
 
-    // Shared class for select inputs to match the Shadcn UI 'Input' component style
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+        
+        // 3. Use 'post' with forceFormData for reliable file uploads
+        post(route('rooms.store'), {
+            forceFormData: true,
+            onSuccess: () => {
+                reset();
+                setPreview(null);
+            },
+        });
+    };
+
     const selectClass = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
 
     return (
@@ -53,12 +79,11 @@ export default function RoomPage({ categories }: Props) {
             
             <div className="py-12">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
-                    {/* Main Container: White in light, Dark Gray in dark mode */}
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 border dark:border-gray-700">
                         
                         <form onSubmit={submit} className="space-y-6">
                             
-                            {/* Room Category (Dropdown) */}
+                            {/* Room Category */}
                             <div className="space-y-2">
                                 <Label htmlFor="room_categories_id" className="dark:text-gray-200">Room Category</Label>
                                 <select
@@ -144,7 +169,7 @@ export default function RoomPage({ categories }: Props) {
                                 {errors.type_of_bed && <p className="text-red-500 text-sm dark:text-red-400">{errors.type_of_bed}</p>}
                             </div>
 
-                            {/* Status (Dropdown) */}
+                            {/* Status */}
                             <div className="space-y-2">
                                 <Label htmlFor="status" className="dark:text-gray-200">Status</Label>
                                 <select
@@ -161,14 +186,33 @@ export default function RoomPage({ categories }: Props) {
                                 {errors.status && <p className="text-red-500 text-sm dark:text-red-400">{errors.status}</p>}
                             </div>
 
-                            {/* Image Upload */}
+                            {/* Image Upload & Preview */}
                             <div className="space-y-2">
                                 <Label htmlFor="img_url" className="dark:text-gray-200">Room Image</Label>
+                                
+                                {preview && (
+                                    <div className="relative w-full h-48 mb-2 border rounded-lg overflow-hidden dark:border-gray-700">
+                                        <img 
+                                            src={preview} 
+                                            alt="Selected room" 
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => { setPreview(null); setData('img_url', null); }}
+                                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full text-xs hover:bg-red-600 transition-colors"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
+
                                 <Input
                                     id="img_url"
                                     type="file"
+                                    accept="image/*"
                                     className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 file:dark:text-gray-100"
-                                    onChange={(e) => setData('img_url', e.target.files?.[0] || null)}
+                                    onChange={handleFileChange}
                                 />
                                 {errors.img_url && <p className="text-red-500 text-sm dark:text-red-400">{errors.img_url}</p>}
                             </div>

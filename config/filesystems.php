@@ -70,7 +70,9 @@ return [
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => true, // Turn this to true to see the REAL error if it still fails
             'http' => [
-                'verify' => false, // Bypass SSL verification ONLY for local testing
+                'verify' => false, // Keep this for local Windows testing
+                'connect_timeout' => 60, // 60 seconds to establish connection
+                'timeout' => 300, // Bypass SSL verification ONLY for local testing
             ],
         ],
 

@@ -9,10 +9,7 @@ description: >-
 
 # Pest Testing 3
 
-
-
 ## When to Apply
-
 
 Activate this skill when:
 - Creating new tests (unit or feature)
@@ -21,33 +18,23 @@ Activate this skill when:
 - Working with datasets, mocking, or test organization
 - Writing architecture tests
 
-
 ## Documentation
-
 
 Use `search-docs` for detailed Pest 3 patterns and documentation.
 
-
 ## Basic Usage
-
-
 
 ### Creating Tests
 
-
 All tests must be written using Pest. Use `php artisan make:test --pest {name}`.
 
-
 ### Test Organization
-
 
 - Tests live in the `tests/Feature` and `tests/Unit` directories.
 - Do NOT remove tests without approval - these are core application code.
 - Test happy paths, failure paths, and edge cases.
 
-
 ### Basic Test Structure
-
 
 <code-snippet name="Basic Pest Test Example" lang="php">
 
@@ -57,19 +44,13 @@ it('is true', function () {
 
 </code-snippet>
 
-
-
-
 ### Running Tests
-
 
 - Run minimal tests with filter before finalizing: `php artisan test --compact --filter=testName`.
 - Run all tests: `php artisan test --compact`.
 - Run file: `php artisan test --compact tests/Feature/ExampleTest.php`.
 
-
 ## Assertions
-
 
 Use specific assertions (`assertSuccessful()`, `assertNotFound()`) instead of `assertStatus()`:
 
@@ -81,23 +62,17 @@ it('returns all', function () {
 
 </code-snippet>
 
-
-
 | Use | Instead of |
 |-----|------------|
 | `assertSuccessful()` | `assertStatus(200)` |
 | `assertNotFound()` | `assertStatus(404)` |
 | `assertForbidden()` | `assertStatus(403)` |
 
-
 ## Mocking
-
 
 Import mock function before use: `use function Pest\Laravel\mock;`
 
-
 ## Datasets
-
 
 Use datasets for repetitive tests (validation rules, etc.):
 
@@ -112,15 +87,9 @@ it('has emails', function (string $email) {
 
 </code-snippet>
 
-
-
-
 ## Pest 3 Features
 
-
-
 ### Architecture Testing
-
 
 Pest 3 includes architecture testing to enforce code conventions:
 
@@ -141,17 +110,11 @@ arch('no debugging')
 
 </code-snippet>
 
-
-
-
 ### Type Coverage
-
 
 Pest 3 provides improved type coverage analysis. Run with `--type-coverage` flag.
 
-
 ## Common Pitfalls
-
 
 - Not importing `use function Pest\Laravel\mock;` before using mock
 - Using `assertStatus(200)` instead of `assertSuccessful()`

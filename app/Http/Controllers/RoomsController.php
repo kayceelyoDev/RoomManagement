@@ -18,11 +18,11 @@ class RoomsController extends Controller
      */
     public function index()
     {
-        // 1. Fetch Categories (Required for Create/Edit modals)
+        // 1. Fetch Categories
         $categories = RoomCategory::all(['id', 'room_category', 'price']);
 
-        // 2. Fetch Rooms
-        $rooms = Rooms::with('roomCategory') // Eager load category
+        // 2. Fetch Rooms with eager loading
+        $rooms = Rooms::with('roomCategory')
             ->latest()
             ->get()
             ->map(function ($room) {
@@ -32,9 +32,7 @@ class RoomsController extends Controller
                     'room_name' => $room->room_name,
                     'room_description' => $room->room_description,
 
-                    // --- FIX FOR THE CRASH IS HERE ---
-                    // We map the category price to 'room_price' because that is likely 
-                    // what your RoomDescription component expects for .toLocaleString()
+                    
                     'room_price' => $room->roomCategory ? (float) $room->roomCategory->price : 0,
 
                     'category_name' => $room->roomCategory ? $room->roomCategory->room_category : 'N/A',
@@ -42,10 +40,9 @@ class RoomsController extends Controller
                     'room_amenities' => $room->room_amenities,
                     'type_of_bed' => $room->type_of_bed,
                     'status' => $room->status,
-                    'img_url' => $room->img_url,
-                    'img_full_path' => $room->img_url
-                        ? asset('storage/' . $room->img_url)
-                        : asset('images/placeholder.png'),
+
+                   
+                    'img_full_path' => $room->img_url ?: 'https://placehold.co/600x400?text=No+Room+Image',
                 ];
             });
 

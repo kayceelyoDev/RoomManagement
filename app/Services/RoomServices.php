@@ -11,16 +11,24 @@ use Illuminate\Http\UploadedFile;
 class RoomServices
 {
     /**
-     * Create a new room and handle file upload.
+     * This matches the 'rooms_storage' disk we defined in config/filesystems.php
+     * which uses the AWS/S3 driver for Laravel Cloud.
+     */
+    protected $disk = 'rooms_storage'; 
+
+    /**
+     * Create a new room and handle cloud bucket upload.
      */
     public function createRoom(array $data)
     {
         DB::beginTransaction();
         try {
-           
             if (isset($data['img_url']) && $data['img_url'] instanceof UploadedFile) {
-               
-                $data['img_url'] = $data['img_url']->store('room', 'public');
+                // 1. Store file in the 'rooms' folder on the Cloud Disk
+                $path = $data['img_url']->store('rooms', $this->disk);
+                
+                // 2. Generate the FULL URL (https://...) provided by the Cloud Bucket
+               $data['img_url'] = Storage::disk($this->disk)->url($path);
             }
 
             $room = Rooms::create($data);
@@ -30,27 +38,25 @@ class RoomServices
             
         } catch (Exception $e) {
             DB::rollBack();
-          
             throw $e;
         }
     }
 
-    
     public function update(Rooms $room, array $data)
     {
         DB::beginTransaction();
-       try {
+        try {
             if (isset($data['img_url']) && $data['img_url'] instanceof UploadedFile) {
-                 // ... (upload logic stays the same) ...
-                 $newPath = $data['img_url']->store('room', 'public');
-                 if ($room->img_url) {
-                    Storage::disk('public')->delete($room->img_url);
-                 }
-                 $data['img_url'] = $newPath;
-            } 
-            // ADD THIS ELSE BLOCK FOR EXTRA SAFETY
-            else {
-                // If it's not a file (e.g. null or string), remove it so we don't wipe the DB column
+                // 1. Delete old image from Cloud Bucket if it exists
+                if ($room->img_url) {
+                    $this->deletePhysicalFile($room->img_url);
+                }
+
+                // 2. Upload new image and get the new URL
+                $path = $data['img_url']->store('rooms', $this->disk);
+                $data['img_url'] = Storage::disk($this->disk)->url($path);
+            } else {
+                // Important: If no new file, don't let the update wipe the existing URL
                 unset($data['img_url']);
             }
 
@@ -69,12 +75,11 @@ class RoomServices
     {
         DB::beginTransaction();
         try {
-            // 1. Delete the image file if it exists
+            // Delete the cloud file first
             if ($room->img_url) {
-                Storage::disk('public')->delete($room->img_url);
+                $this->deletePhysicalFile($room->img_url);
             }
 
-            // 2. Delete the database record
             $room->delete();
 
             DB::commit();
@@ -83,5 +88,21 @@ class RoomServices
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Helper to clean the URL and delete the file from the cloud bucket.
+     */
+    private function deletePhysicalFile(string $fullUrl)
+    {
+        // Extract the path (e.g., /rooms/photo.jpg) from the full https URL
+        $path = parse_url($fullUrl, PHP_URL_PATH);
+        
+        // Remove the leading slash so it becomes 'rooms/photo.jpg'
+        $cleanPath = ltrim($path, '/');
+
+        // If your bucket name is included in the URL path, you might need to strip it.
+        // For Laravel Cloud / R2, ltrim usually suffices.
+        Storage::disk($this->disk)->delete($cleanPath);
     }
 }
