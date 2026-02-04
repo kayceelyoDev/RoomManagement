@@ -8,14 +8,19 @@ import {
 } from '@/components/ui/input-otp';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import AuthLayout from '@/layouts/auth-layout';
+import twoFactor from '@/routes/two-factor';
 import { store } from '@/routes/two-factor/login';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, useForm } from '@inertiajs/react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useMemo, useState } from 'react';
 
 export default function TwoFactorChallenge() {
     const [showRecoveryInput, setShowRecoveryInput] = useState<boolean>(false);
     const [code, setCode] = useState<string>('');
+    const form = useForm({
+        code: '',
+        recovery_code: '',
+    });
 
     const authConfigContent = useMemo<{
         title: string;
@@ -54,7 +59,8 @@ export default function TwoFactorChallenge() {
 
             <div className="space-y-6">
                 <Form
-                    {...store.form()}
+                    method="post"
+                    action={twoFactor.login.url()}
                     className="space-y-4"
                     resetOnError
                     resetOnSuccess={!showRecoveryInput}

@@ -13,9 +13,11 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Bed, BookOpen, Folder, icons, LayoutGrid } from 'lucide-react';
+import { Bed, BookOpen, Folder, icons, LayoutGrid, NotebookPen } from 'lucide-react';
 import AppLogo from './app-logo';
 import { route } from 'ziggy-js';
+import rooms from '@/routes/rooms';
+import reservation from '@/routes/reservation';
 
 const mainNavItems: NavItem[] = [
     {
@@ -25,8 +27,13 @@ const mainNavItems: NavItem[] = [
     },
     {
         title:'Rooms',
-        href:route('rooms.index'),
+        href:rooms.index.url(),
         icon: Bed,
+    },
+    {
+        title:'Reservation',
+        href:reservation.index.url(),
+        icon: NotebookPen,
     }
 ];
 
@@ -41,6 +48,7 @@ const footerNavItems: NavItem[] = [
         href: 'https://laravel.com/docs/starter-kits#react',
         icon: BookOpen,
     },
+    
 ];
 
 export function AppSidebar() {

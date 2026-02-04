@@ -24,13 +24,15 @@ class RoomRequest extends FormRequest
     {
         return [
             //
-            'room_name'=>'nullable',
-            'room_description'=>'nullable',
-            'room_price'=>'nullable',
-            'img_url' => $this->isMethod('put') || $this->isMethod('patch') 
-                        ? 'nullable|image|mimes:jpg,jpeg,png|max:2048' 
-                        : 'required|image|mimes:jpg,jpeg,png|max:2048',
-            'status' => 'nullable',
+            'room_categories_id' => ['required', 'exists:room_categories,id'],
+
+            'room_name' => ['required', 'string', 'max:255'],
+            'room_description' => ['required', 'string'],
+            'max_extra_person' => ['required', 'integer'],
+            'room_amenities' => ['required', 'string'],
+            'type_of_bed' => ['required', 'string'],
+            'status' => ['required', 'in:available,booked,occupied,unavailable'],
+            'img_url' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif'],
         ];
     }
 }

@@ -7,9 +7,15 @@ import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, useForm } from '@inertiajs/react';
 
 export default function Register() {
+    const form = useForm({
+        name: '',
+        email: '',
+        password: '',
+        password_confirmation: '',
+    });
     return (
         <AuthLayout
             title="Create an account"
@@ -17,7 +23,8 @@ export default function Register() {
         >
             <Head title="Register" />
             <Form
-                {...store.form()}
+                action={store.url()}
+                method="post"
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
                 className="flex flex-col gap-6"

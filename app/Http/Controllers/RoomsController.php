@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RoomRequest;
+use App\Models\RoomCategory;
 use App\Models\Rooms;
 use App\Http\Controllers\Controller;
 use App\Services\RoomServices;
@@ -17,25 +18,40 @@ class RoomsController extends Controller
      */
     public function index()
     {
-        $rooms = Rooms::latest()
+        // 1. Fetch Categories (Required for Create/Edit modals)
+        $categories = RoomCategory::all(['id', 'room_category', 'price']);
+
+        // 2. Fetch Rooms
+        $rooms = Rooms::with('roomCategory') // Eager load category
+            ->latest()
             ->get()
             ->map(function ($room) {
                 return [
                     'id' => $room->id,
+                    'room_categories_id' => $room->room_categories_id,
                     'room_name' => $room->room_name,
                     'room_description' => $room->room_description,
-                    'room_price' => (float) $room->room_price,
+
+                    // --- FIX FOR THE CRASH IS HERE ---
+                    // We map the category price to 'room_price' because that is likely 
+                    // what your RoomDescription component expects for .toLocaleString()
+                    'room_price' => $room->roomCategory ? (float) $room->roomCategory->price : 0,
+
+                    'category_name' => $room->roomCategory ? $room->roomCategory->room_category : 'N/A',
+                    'max_extra_person' => $room->max_extra_person,
+                    'room_amenities' => $room->room_amenities,
+                    'type_of_bed' => $room->type_of_bed,
                     'status' => $room->status,
-                    'user_id' => $room->user_id,
-                    // Ensure image URL is always a full public path
-                    'img_url' => $room->img_url
+                    'img_url' => $room->img_url,
+                    'img_full_path' => $room->img_url
                         ? asset('storage/' . $room->img_url)
                         : asset('images/placeholder.png'),
                 ];
             });
 
         return inertia('rooms/DisplayRoom', [
-            'rooms' => $rooms
+            'rooms' => $rooms,
+            'categories' => $categories
         ]);
     }
 
@@ -44,27 +60,21 @@ class RoomsController extends Controller
      */
     public function create()
     {
-        //
-        return Inertia::render('rooms/RoomPage');
+        $categories = RoomCategory::all(['id', 'room_category', 'price']);
+        return Inertia::render('rooms/RoomPage', ['categories' => $categories]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(RoomRequest $roomrequest, RoomServices $roomServices)
+    public function store(RoomRequest $request, RoomServices $roomServices)
     {
+        $data = $request->validated();
+        $data['user_id'] = Auth::id();
 
-        $rooms = $roomrequest->validated();
-        $rooms['user_id'] = Auth::id();
-        $path = null;
-        if ($roomrequest->hasFile('img_url')) {
-            $path = $roomrequest->file('img_url')->store('room', 'public');
-        }
-        $rooms['img_url'] = $path;
+        $roomServices->createRoom($data);
 
-        $roomServices->createRoom($rooms);
-
-        return redirect()->route('rooms.index');
+        return redirect()->route('rooms.index')->with('success', 'Room created successfully.');
     }
 
     /**
@@ -90,16 +100,8 @@ class RoomsController extends Controller
     {
         $data = $roomrequest->validated();
 
-
-        $data['user_id'] = Auth::id();
-
-
-
-        if (isset($data['img_url']) && $data['img_url'] instanceof \Illuminate\Http\UploadedFile) {
-
-            $data['img_url'] = $data['img_url']->store('room', 'public');
-        } else {
-
+        // Prevent overwriting image with null if no file was uploaded
+        if (array_key_exists('img_url', $data) && is_null($data['img_url'])) {
             unset($data['img_url']);
         }
 
@@ -111,8 +113,17 @@ class RoomsController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Rooms $rooms)
+    public function destroy(Rooms $room, RoomServices $services)
     {
-        //
+
+        if ($room->reservations()->exists()) {
+            return redirect()->back()->withErrors([
+                'error' => 'Cannot delete this room because it has existing reservations.'
+            ]);
+        }
+
+        $services->deleteRoom($room); // Your existing delete logic
+
+        return redirect()->route('rooms.index')->with('success', 'Room deleted successfully.');
     }
 }
