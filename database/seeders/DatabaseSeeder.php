@@ -19,12 +19,15 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Admin',
-            'email' => 'Admin@gmail.com',
-            'password' => Hash::make('admin123'),
-            'role' => roles::ADMIN,
-        ]);
+        // User::factory()->create([
+        //     'name' => 'Admin',
+        //     'email' => 'Admin@gmail.com',
+        //     'password' => Hash::make('admin123'),
+        //     'role' => roles::ADMIN,
+        // ]);
+    $this->call([
+        AdminUserSeeder::class,
+    ]);
 
     //    $this->call([
     //         RoomCategorySeeder::class,
