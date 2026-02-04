@@ -59,6 +59,7 @@ return [
             'throw' => false,
             'report' => false,
         ],
+
         'rooms_storage' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -74,6 +75,19 @@ return [
                 'connect_timeout' => 60, // 60 seconds to establish connection
                 'timeout' => 300, // Bypass SSL verification ONLY for local testing
             ],
+        ],
+
+        'supabase' => [
+            'driver' => 's3',
+            'key' => env('SUPABASE_ACCESS_KEY_ID'),
+            'secret' => env('SUPABASE_SECRET_ACCESS_KEY'),
+            'region' => env('SUPABASE_REGION', 'us-east-1'), // Supabase usually uses us-east-1 for S3
+            'bucket' => env('SUPABASE_BUCKET'),
+            'endpoint' => env('SUPABASE_ENDPOINT'),
+            'url' => env('SUPABASE_URL'), // The public URL to your bucket
+            'use_path_style_endpoint' => true,
+            'visibility' => 'public',
+            'throw' => true,
         ],
 
     ],

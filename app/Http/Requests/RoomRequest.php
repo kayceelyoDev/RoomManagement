@@ -32,7 +32,7 @@ class RoomRequest extends FormRequest
             'room_amenities' => ['required', 'string'],
             'type_of_bed' => ['required', 'string'],
             'status' => ['required', 'in:available,booked,occupied,unavailable'],
-            'img_url' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10048', 
+            'img_url' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:20048', 
         ];
     }
 }

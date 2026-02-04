@@ -59,7 +59,7 @@ export default function DisplayRoom({ rooms, categories }: Props) {
 
             <div className="py-12 bg-gray-50 dark:bg-gray-900 min-h-screen">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    
+
                     {/* Header Section */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                         <div>
@@ -70,10 +70,10 @@ export default function DisplayRoom({ rooms, categories }: Props) {
                                 Manage your room listings, prices, and availability.
                             </p>
                         </div>
-                        
+
                         <div className="flex gap-3">
                             {/* Add Category Button */}
-                            <Link href={roomcategory.index.url()}> 
+                            <Link href={roomcategory.index.url()}>
                                 <Button variant="outline" className="flex items-center gap-2 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">
                                     <Layers className="size-4" />
                                     Add Category
@@ -94,18 +94,20 @@ export default function DisplayRoom({ rooms, categories }: Props) {
                     {rooms.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             {rooms.map((room) => (
-                                <div 
-                                    key={room.id} 
+                                <div
+                                    key={room.id}
                                     className="group relative flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900"
                                 >
                                     {/* Image Section */}
                                     <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                                        <img 
-                                            src={room.img_full_path} 
-                                            alt={room.room_name} 
-                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        <img
+                                            src={room.img_full_path} // Check that this variable name is exact
+                                            alt={room.room_name}
+                                            className="h-full w-full object-cover"
+                                            // Add this to see if there's a hidden error
+                                            onError={(e) => console.error("Image failed to load:", room.img_full_path)}
                                         />
-                                        
+
                                         {/* Status Badge */}
                                         <div className="absolute top-3 right-3">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border backdrop-blur-md ${getStatusColor(room.status)}`}>
@@ -154,7 +156,7 @@ export default function DisplayRoom({ rooms, categories }: Props) {
 
                                         {/* Actions */}
                                         <div className="mt-auto flex gap-2">
-                                            <Button 
+                                            <Button
                                                 onClick={() => openEditModal(room)}
                                                 variant="outline"
                                                 className="flex-1 gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
@@ -162,8 +164,8 @@ export default function DisplayRoom({ rooms, categories }: Props) {
                                                 <Edit className="size-4" />
                                                 Edit
                                             </Button>
-                                            
-                                            <Button 
+
+                                            <Button
                                                 onClick={() => deleteRoom(room)}
                                                 variant="destructive"
                                                 className="flex-none px-3 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30 dark:hover:bg-red-900/40"
@@ -195,13 +197,13 @@ export default function DisplayRoom({ rooms, categories }: Props) {
                     )}
 
                     {/* Update Modal */}
-                    <UpdateRoomForm 
+                    <UpdateRoomForm
                         room={selectedRoom}
                         categories={categories}
                         isOpen={isEditOpen}
                         onClose={closeEditModal}
                     />
-                    
+
                 </div>
             </div>
         </AppLayout>
