@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\enum\ReservationEnum;
+use App\Enum\ReservationEnum;
 // DELETED: use App\Events\ReservationChannelUpdated; 
 use App\Http\Requests\ReservationRequest;
 use App\Models\Reservation;
