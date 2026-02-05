@@ -66,29 +66,22 @@ class RoomCategoryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-   public function update(Request $request, RoomCategory $roomCategory)
+    public function update(Request $request, RoomCategory $roomcategory)
     {
-        
         $validated = $request->validate([
             'room_category' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
             'room_capacity' => ['required', 'integer', 'min:1'],
         ]);
 
-        // 2. Update
-        $roomCategory->update($validated);
+        $roomcategory->update($validated); // This will now work
 
         return redirect()->back()->with('success', 'Category updated successfully.');
     }
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(RoomCategory $roomCategory)
+
+    public function destroy(RoomCategory $roomcategory)
     {
-       
-
-        $roomCategory->delete();
-
+        $roomcategory->delete(); // This will now work
         return redirect()->back()->with('success', 'Category deleted successfully.');
     }
 }
