@@ -49,7 +49,7 @@ class FortifyServiceProvider extends ServiceProvider
 
                 
                 if ($user->role === roles::GUEST) {
-                    return redirect()->route('guest');
+                    return redirect()->route('guest.guestpage');
                 }
 
                 
@@ -72,7 +72,7 @@ class FortifyServiceProvider extends ServiceProvider
 
               
                 if ($user->role === roles::GUEST) {
-                    return redirect()->route('guest');
+                    return redirect()->route('guest.guestpage');
                 }
 
                 return redirect()->route('dashboard');

@@ -2,16 +2,14 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import {
-    X, Phone, DoorOpen, Info, CalendarPlus, Save, AlertCircle, 
-    Clock, ConciergeBell, Plus, Minus, Users, User,
-    ChevronLeft, ChevronRight, Calendar as CalendarIcon, CheckCircle, XCircle, ArrowRight
+    X, Minus, Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle
 } from 'lucide-react';
 import reservationRoute from '@/routes/reservation';
 import { 
     format, addMonths, subMonths, startOfMonth, endOfMonth, 
-    eachDayOfInterval, isSameDay, isToday, addHours, startOfToday, 
+    eachDayOfInterval, isSameDay, startOfToday, addHours, startOfDay, 
     isBefore, parseISO, isWithinInterval, areIntervalsOverlapping,
-    endOfDay, startOfDay, addMinutes, isAfter, isSameMinute
+    endOfDay, isAfter
 } from 'date-fns';
 
 // --- Types ---
@@ -51,7 +49,8 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     preSelectedRoomId?: number | null;
-    role?: 'admin' | 'staff' | 'guest';
+    // Updated to include super_admin
+    role?: 'admin' | 'staff' | 'guest' | 'super_admin';
 }
 
 const BUFFER_HOURS = 3; // Room prep time
@@ -65,7 +64,7 @@ export default function AddReservation({
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, reset } = useForm({
         room_id: preSelectedRoomId ? preSelectedRoomId.toString() : '',
         guest_name: '',
         contact_number: '',
@@ -78,6 +77,7 @@ export default function AddReservation({
     });
 
     const selectedRoom = useMemo(() => rooms.find(r => String(r.id) === String(data.room_id)), [data.room_id, rooms]);
+    const isAdminOrStaff = ['admin', 'super_admin', 'staff'].includes(role);
 
     // --- Reset Logic ---
     useEffect(() => {
@@ -120,22 +120,18 @@ export default function AddReservation({
         return selectedRoom.reservations.filter(res => {
             const start = parseISO(res.check_in_date);
             const end = parseISO(res.check_out_date);
-            // Include reservations ending today if they end AFTER room prep starts
             return areIntervalsOverlapping({ start: dayStart, end: dayEnd }, { start, end });
         });
     };
 
-    // Check if the 2:00 PM slot (plus buffer) is blocked
     const getEarliestAvailableTime = (date: Date) => {
         const standardCheckIn = addHours(startOfDay(date), 14); // 2:00 PM
         
         if (!selectedRoom?.reservations) return standardCheckIn;
 
-        // Find reservations overlapping with this day
         const overlapping = selectedRoom.reservations.filter(res => {
             const start = parseISO(res.check_in_date);
             const end = parseISO(res.check_out_date);
-            // Only care about bookings that end ON or AFTER today
             return isWithinInterval(end, { start: startOfDay(date), end: endOfDay(date) }) ||
                    isWithinInterval(start, { start: startOfDay(date), end: endOfDay(date) }) ||
                    (isBefore(start, startOfDay(date)) && isAfter(end, endOfDay(date)));
@@ -143,27 +139,21 @@ export default function AddReservation({
 
         if (overlapping.length === 0) return standardCheckIn;
 
-        // Sort by end time to find the last checkout
         overlapping.sort((a, b) => parseISO(b.check_out_date).getTime() - parseISO(a.check_out_date).getTime());
         const lastRes = overlapping[0];
         const lastCheckout = parseISO(lastRes.check_out_date);
-
-        // Calculate available time: Checkout Time + Buffer
         const availableTime = addHours(lastCheckout, BUFFER_HOURS);
 
-        // If the calculated available time pushes into the NEXT day, this day is effectively fully booked
         if (!isSameDay(availableTime, date)) return null;
 
-        // If standard check-in (2PM) is AFTER the buffer period, stick to 2PM. Otherwise use buffer time.
         return isAfter(standardCheckIn, availableTime) ? standardCheckIn : availableTime;
     };
 
     const confirmDateSelection = () => {
         if (!selectedDate) return;
         const availableTime = getEarliestAvailableTime(selectedDate);
-        if (!availableTime) return; // Should be handled by UI disable state
+        if (!availableTime) return;
 
-        // Default Checkout is 22 hours after checkin (approx next day 12pm)
         const checkOut = addHours(availableTime, 22); 
 
         setData(prev => ({
@@ -174,11 +164,10 @@ export default function AddReservation({
         setStep('form');
     };
 
-    // --- Services Logic (Updated for Quantities) ---
+    // --- Services Logic ---
     const updateServiceQuantity = (id: number, delta: number) => {
         const existingIndex = data.selected_services.findIndex(s => s.id === id);
         const masterService = services.find(s => s.id === id);
-        
         if (!masterService) return;
 
         let newServices = [...data.selected_services];
@@ -186,14 +175,11 @@ export default function AddReservation({
         if (existingIndex > -1) {
             const newQty = newServices[existingIndex].quantity + delta;
             if (newQty <= 0) {
-                // Remove if quantity becomes 0
                 newServices = newServices.filter(s => s.id !== id);
             } else {
-                // Update Quantity
                 newServices[existingIndex].quantity = newQty;
             }
         } else if (delta > 0) {
-            // Add new service starting at 1
             newServices.push({ id, quantity: 1, price: masterService.services_price });
         }
 
@@ -226,10 +212,8 @@ export default function AddReservation({
         post(reservationRoute.store.url(), { onSuccess: () => onClose() });
     };
 
-    // --- RENDER VARS ---
     const startingDayIndex = startOfMonth(currentMonth).getDay();
     const activeReservations = selectedDate ? getReservationsForDate(selectedDate) : [];
-    // Availability Check for Selected Date
     const availableTimeSlot = selectedDate ? getEarliestAvailableTime(selectedDate) : null;
     const isFullyBooked = selectedDate && availableTimeSlot === null;
 
@@ -291,8 +275,6 @@ export default function AddReservation({
                                             {Array.from({ length: startingDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
                                             {daysInMonth.map((day) => {
                                                 const isPast = isBefore(day, startOfToday());
-                                                // Check purely strictly if day is fully blocked (e.g., middle of a long stay)
-                                                // We use a simplified check here for visual dot only
                                                 const hasRes = getReservationsForDate(day).length > 0;
                                                 const isSelected = selectedDate && isSameDay(day, selectedDate);
                                                 
@@ -368,24 +350,53 @@ export default function AddReservation({
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
-                                            <input className="border rounded p-2 dark:bg-gray-800 dark:text-white" placeholder="Guest Name" value={data.guest_name} onChange={e => setData('guest_name', e.target.value)} />
-                                            <input className="border rounded p-2 dark:bg-gray-800 dark:text-white" placeholder="Contact Number" value={data.contact_number} onChange={e => setData('contact_number', e.target.value)} />
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Guest Name</label>
+                                                <input className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" placeholder="Full Name" value={data.guest_name} onChange={e => setData('guest_name', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Contact</label>
+                                                <input className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" placeholder="Phone / Email" value={data.contact_number} onChange={e => setData('contact_number', e.target.value)} />
+                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
-                                            <input type="datetime-local" className="border rounded p-2 dark:bg-gray-800 dark:text-white" value={data.check_in_date} onChange={e => setData('check_in_date', e.target.value)} />
-                                            <input type="datetime-local" className="border rounded p-2 dark:bg-gray-800 dark:text-white" value={data.check_out_date} onChange={e => setData('check_out_date', e.target.value)} />
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Check-in</label>
+                                                <input type="datetime-local" className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" value={data.check_in_date} onChange={e => setData('check_in_date', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Check-out</label>
+                                                <input type="datetime-local" className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" value={data.check_out_date} onChange={e => setData('check_out_date', e.target.value)} />
+                                            </div>
                                         </div>
 
-                                        {(role === 'admin' || role === 'staff') && (
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <select className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" value={data.status} onChange={e => setData('status', e.target.value)}>
-                                                    <option value="pending">Pending</option>
-                                                    <option value="confirmed">Confirmed</option>
-                                                </select>
-                                                <input type="number" className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" value={data.total_guest} onChange={e => setData('total_guest', parseInt(e.target.value))} min={1} />
+                                        {/* Status and Guest Count Section */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {/* Total Guest is visible to everyone */}
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Total Guests</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" 
+                                                    value={data.total_guest} 
+                                                    onChange={e => setData('total_guest', parseInt(e.target.value))} 
+                                                    min={1} 
+                                                />
                                             </div>
-                                        )}
+
+                                            {/* Status is ONLY visible to Admin, Super Admin, and Staff */}
+                                            {isAdminOrStaff && (
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Reservation Status</label>
+                                                    <select className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" value={data.status} onChange={e => setData('status', e.target.value)}>
+                                                        <option value="pending">Pending</option>
+                                                        <option value="confirmed">Confirmed</option>
+                                                        <option value="cancelled">Cancelled</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
 
                                         <div>
                                             <label className="text-sm font-bold mb-2 block dark:text-white">Add Services</label>

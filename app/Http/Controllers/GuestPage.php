@@ -33,24 +33,37 @@ class GuestPage extends Controller
 
     public function guestPageRooms()
     {
-        // 1. Security Check
+        // 1. Security Check (Gate Authorization)
         if (!Gate::allows('acces-guest')) {
             return redirect()->route('error')->with('error', 'Guests only!');
         }
 
-        // 2. Fetch Rooms with Categories AND Reservations
-        // We need 'reservations' to calculate availability in the frontend calendar
-        $rooms = Rooms::latest()
-            ->with(['roomCategory', 'reservations']) // <--- Added 'reservations'
+        // 2. Fetch Rooms
+        // CRITICAL: We must use 'with()' to load 'reservations'.
+        // The frontend calendar needs existing reservations to block dates.
+        $rooms = Rooms::query()
+            ->with([
+                'roomCategory',
+                'reservations' => function ($query) {
+                    // Optimization: Only fetch bookings from today onwards to keep payload light
+                    $query->where('check_out_date', '>=', now()->subDay())
+                        ->select('id', 'room_id', 'check_in_date', 'check_out_date', 'status');
+                }
+            ])
+            ->where('status', '!=', 'maintenance') // Example: Don't show rooms under maintenance
+            ->latest()
             ->get();
 
-        // 3. Fetch Services
-        $services = Services::latest()->get();
+        // 3. Fetch Services (for the Add-on section in the modal)
+        $services = Services::all();
 
-        // 4. Render Page
+        // 4. Return View
         return Inertia::render('GuestPage', [
             'rooms' => $rooms,
             'services' => $services,
+            'auth' => [
+                'user' => Auth::user()
+            ]
         ]);
     }
 
@@ -91,7 +104,7 @@ class GuestPage extends Controller
 
         // 3. Render View
         // Make sure the component name matches your file name exactly (e.g., 'Guest/Reservations' or 'GuestReservationPage')
-        return Inertia::render('GuestReservationPage', [ 
+        return Inertia::render('GuestReservationPage', [
             'reservations' => $reservations,
             'notifications' => $notifications,
             'user' => $user

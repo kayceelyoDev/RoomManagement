@@ -36,7 +36,7 @@ class AuthMiddleware
                 "role" => $userRole,
                 "required_roles" => $role,
             ]);
-            return redirect()->route('error');
+            return redirect()->route('home');
         }
 
         return $next($request);
