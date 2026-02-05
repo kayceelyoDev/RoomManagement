@@ -81,19 +81,9 @@ class ReservationController extends Controller
         $data = $request->validated();
         $data['user_id'] = Auth::id();
 
-        try {
-            // The service handles validation, transaction, and emails
-            $services->createReservation($data);
+        $services->createReservation($data);
 
-            // DELETED: ReservationChannelUpdated::dispatch();
-
-            return redirect()->route('reservation.index')->with('success', 'Reservation created successfully.');
-
-        } catch (\Exception $e) {
-            return back()->withErrors([
-                'check_in_date' => 'The selected dates are no longer available. Please choose another date.'
-            ]);
-        }
+        return redirect()->route('reservation.index')->with('success', 'Reservation created successfully.');
     }
 
     /**
@@ -105,9 +95,9 @@ class ReservationController extends Controller
 
         // The service handles conflict checking, data update, and pivot sync
         $services->updateReservation($reservation, $data);
-        
+
         // DELETED: ReservationChannelUpdated::dispatch();
-        
+
         return redirect()->back()->with('success', 'Reservation updated successfully.');
     }
 
@@ -126,9 +116,9 @@ class ReservationController extends Controller
             });
 
             Log::info("Reservation #{$reservation->id} deleted by Admin " . Auth::id());
-            
+
             // DELETED: ReservationChannelUpdated::dispatch();
-            
+
             return redirect()->back()->with('success', 'Reservation deleted.');
 
         } catch (\Exception $e) {

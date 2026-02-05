@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\enum\ReservationEnum;
+use App\Enum\ReservationEnum;
 use App\Mail\ReservationReceiptEmail;
 use App\Models\Reservation;
 use Illuminate\Http\Request;
