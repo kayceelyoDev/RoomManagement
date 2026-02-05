@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Mail\ReservationConfirmed;
 use App\Models\Reservation;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class ReservationServices
@@ -37,7 +39,7 @@ class ReservationServices
 
     public function createReservation(array $data)
     {
-        // 1. Check for Conflicts
+       
         $this->checkAvailability(
             $data['room_id'], 
             $data['check_in_date'], 
@@ -50,7 +52,7 @@ class ReservationServices
             unset($data['selected_services']);
 
             $reservation = Reservation::create($data);
-
+           
             if (!empty($servicesData)) {
                 foreach ($servicesData as $item) {
                     $reservation->services()->attach($item['id'], [
@@ -59,7 +61,7 @@ class ReservationServices
                     ]);
                 }
             }
-
+            Mail::to($reservation->user->email)->send(new ReservationConfirmed($reservation));
             DB::commit();
             return $reservation;
 

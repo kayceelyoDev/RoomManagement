@@ -9,6 +9,7 @@ use App\Models\Rooms;
 use App\Models\Services;
 use App\Services\ReservationServices;
 use Auth;
+use Gate;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -20,7 +21,9 @@ class ReservationController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-
+        if (Gate::allows('acces-guest')) {
+            return redirect()->route('home');
+        }
         // 1. Fetch Reservations List (for the main table)
         $reservations = Reservation::with(['room', 'services'])
             ->when($search, function ($query, $search) {
