@@ -9,6 +9,7 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
             ssr: 'resources/js/ssr.tsx',
+            
             refresh: true,
         }),
         react({
@@ -21,6 +22,7 @@ export default defineConfig({
             formVariants: true,
         }),
     ],
+    
     esbuild: {
         jsx: 'automatic',
     },

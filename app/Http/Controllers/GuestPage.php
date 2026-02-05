@@ -24,7 +24,7 @@ class GuestPage extends Controller
         $services = Services::latest()->get();
 
         // 3. Pass data to view
-        return Inertia::render('Welcome', [
+        return Inertia::render('welcome', [
             'rooms' => $rooms,
             'services' => $services, // Pass services here too just in case
             'canRegister' => Features::enabled(Features::registration()),
