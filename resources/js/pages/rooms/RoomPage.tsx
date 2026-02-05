@@ -85,7 +85,7 @@ export default function RoomPage({ categories }: Props) {
                             
                             {/* Room Category */}
                             <div className="space-y-2">
-                                <Label htmlFor="room_categories_id">Room Category</Label>
+                                <Label htmlFor="room_categories_id" className="dark:text-gray-200">Room Category</Label>
                                 <select
                                     id="room_categories_id"
                                     className={selectClass}
@@ -99,10 +99,11 @@ export default function RoomPage({ categories }: Props) {
                                         </option>
                                     ))}
                                 </select>
-                                {errors.room_categories_id && <p className="text-red-500 text-sm">{errors.room_categories_id}</p>}
+                                {errors.room_categories_id && <p className="text-red-500 text-sm dark:text-red-400">{errors.room_categories_id}</p>}
                             </div>
 
-                                <Label htmlFor="room_name">Room Name</Label>
+                            {/* Room Name */}
+                            <div className="space-y-2">
                                 <Label htmlFor="room_name" className="dark:text-gray-200">Room Name</Label>
                                 <Input 
                                     id="room_name" 
@@ -111,10 +112,11 @@ export default function RoomPage({ categories }: Props) {
                                     value={data.room_name} 
                                     onChange={(e) => setData('room_name', e.target.value)} 
                                 />
-                                {errors.room_name && <p className="text-red-500 text-sm">{errors.room_name}</p>}
+                                {errors.room_name && <p className="text-red-500 text-sm dark:text-red-400">{errors.room_name}</p>}
                             </div>
 
-                                <Label htmlFor="room_description">Room Description</Label>
+                            {/* Room Description */}
+                            <div className="space-y-2">
                                 <Label htmlFor="room_description" className="dark:text-gray-200">Room Description</Label>
                                 <Input 
                                     id="room_description" 
@@ -123,10 +125,11 @@ export default function RoomPage({ categories }: Props) {
                                     value={data.room_description} 
                                     onChange={(e) => setData('room_description', e.target.value)} 
                                 />
-                                {errors.room_description && <p className="text-red-500 text-sm">{errors.room_description}</p>}
+                                {errors.room_description && <p className="text-red-500 text-sm dark:text-red-400">{errors.room_description}</p>}
                             </div>
 
-                                <Label htmlFor="max_extra_person">Max Extra Person</Label>
+                            {/* Max Extra Person */}
+                            <div className="space-y-2">
                                 <Label htmlFor="max_extra_person" className="dark:text-gray-200">Max Extra Person</Label>
                                 <Input 
                                     id="max_extra_person" 
@@ -135,10 +138,11 @@ export default function RoomPage({ categories }: Props) {
                                     value={data.max_extra_person} 
                                     onChange={(e) => setData('max_extra_person', e.target.value)} 
                                 />
-                                {errors.max_extra_person && <p className="text-red-500 text-sm">{errors.max_extra_person}</p>}
+                                {errors.max_extra_person && <p className="text-red-500 text-sm dark:text-red-400">{errors.max_extra_person}</p>}
                             </div>
 
-                                <Label htmlFor="room_amenities">Amenities</Label>
+                            {/* Room Amenities */}
+                            <div className="space-y-2">
                                 <Label htmlFor="room_amenities" className="dark:text-gray-200">Amenities</Label>
                                 <Input 
                                     id="room_amenities" 
@@ -148,10 +152,11 @@ export default function RoomPage({ categories }: Props) {
                                     value={data.room_amenities} 
                                     onChange={(e) => setData('room_amenities', e.target.value)} 
                                 />
-                                {errors.room_amenities && <p className="text-red-500 text-sm">{errors.room_amenities}</p>}
+                                {errors.room_amenities && <p className="text-red-500 text-sm dark:text-red-400">{errors.room_amenities}</p>}
                             </div>
 
-                                <Label htmlFor="type_of_bed">Type of Bed</Label>
+                            {/* Type of Bed */}
+                            <div className="space-y-2">
                                 <Label htmlFor="type_of_bed" className="dark:text-gray-200">Type of Bed</Label>
                                 <Input 
                                     id="type_of_bed" 
@@ -161,10 +166,11 @@ export default function RoomPage({ categories }: Props) {
                                     value={data.type_of_bed} 
                                     onChange={(e) => setData('type_of_bed', e.target.value)} 
                                 />
-                                {errors.type_of_bed && <p className="text-red-500 text-sm">{errors.type_of_bed}</p>}
+                                {errors.type_of_bed && <p className="text-red-500 text-sm dark:text-red-400">{errors.type_of_bed}</p>}
                             </div>
 
-                                <Label htmlFor="status">Status</Label>
+                            {/* Status */}
+                            <div className="space-y-2">
                                 <Label htmlFor="status" className="dark:text-gray-200">Status</Label>
                                 <select
                                     id="status"
@@ -174,10 +180,11 @@ export default function RoomPage({ categories }: Props) {
                                 >
                                     <option value="unavailable" className="bg-card">Unavailable</option>
                                 </select>
-                                {errors.status && <p className="text-red-500 text-sm">{errors.status}</p>}
+                                {errors.status && <p className="text-red-500 text-sm dark:text-red-400">{errors.status}</p>}
                             </div>
 
-                                <Label htmlFor="img_url">Room Image</Label>
+                            {/* Image Upload & Preview */}
+                            <div className="space-y-2">
                                 <Label htmlFor="img_url" className="dark:text-gray-200">Room Image</Label>
                                 
                                 {preview && (
@@ -204,7 +211,7 @@ export default function RoomPage({ categories }: Props) {
                                     className="bg-background border-border"
                                     onChange={handleFileChange}
                                 />
-                                {errors.img_url && <p className="text-red-500 text-sm">{errors.img_url}</p>}
+                                {errors.img_url && <p className="text-red-500 text-sm dark:text-red-400">{errors.img_url}</p>}
                             </div>
 
                             <div className="pt-2">
