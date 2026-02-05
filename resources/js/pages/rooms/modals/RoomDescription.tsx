@@ -40,7 +40,7 @@ export default function RoomDescription({ room, isOpen, onClose }: Props) {
                             leaveTo="opacity-0 scale-95"
                         >
                             {/* 3. The Actual Card Content */}
-                            <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all dark:bg-gray-800">
+                            <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-card p-6 shadow-xl transition-all border border-border">
                                 <div className="flex justify-between items-center mb-4">
                                     <Dialog.Title className="text-2xl font-bold dark:text-white">
                                         {room.room_name}
@@ -55,7 +55,7 @@ export default function RoomDescription({ room, isOpen, onClose }: Props) {
                                 </p>
 
                                 <div className="flex justify-between items-center border-t pt-4 dark:border-gray-700">
-                                    <span className="text-2xl font-bold text-indigo-600">
+                                    <span className="text-2xl font-bold text-primary">
                                         ₱{room.room_price.toLocaleString()}
                                     </span >
                                     <button 

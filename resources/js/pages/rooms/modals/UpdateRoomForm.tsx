@@ -82,7 +82,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
     };
 
     // Shared style for Select inputs to match Shadcn UI
-    const selectClass = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
+    const selectClass = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
     if (!room) return null;
 
@@ -113,7 +113,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                             leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
-                            <Dialog.Panel className="w-full max-w-2xl overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800 dark:border dark:border-gray-700">
+                            <Dialog.Panel className="w-full max-w-2xl overflow-hidden rounded-lg bg-card p-6 text-left align-middle shadow-xl transition-all border border-border">
                                 
                                 <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 mb-5 border-b pb-2 dark:border-gray-700">
                                     Update Room Details
@@ -131,7 +131,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                                 id="room_name"
                                                 value={data.room_name}
                                                 onChange={(e) => setData('room_name', e.target.value)}
-                                                className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                                className="bg-background border-border text-foreground"
                                             />
                                             {errors.room_name && <p className="text-red-500 text-sm">{errors.room_name}</p>}
                                         </div>
@@ -149,7 +149,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                             >
                                                 <option value="" disabled>Select Category</option>
                                                 {categories?.map((cat) => (
-                                                    <option key={cat.id} value={cat.id} className="dark:bg-gray-800">
+                                                    <option key={cat.id} value={cat.id} className="bg-card">
                                                         {cat.room_category} {cat.price ? `(₱${cat.price})` : ''}
                                                     </option>
                                                 ))}
@@ -167,7 +167,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                             id="room_description"
                                             value={data.room_description}
                                             onChange={(e) => setData('room_description', e.target.value)}
-                                            className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                            className="bg-background border-border"
                                         />
                                         {errors.room_description && <p className="text-red-500 text-sm">{errors.room_description}</p>}
                                     </div>
@@ -183,7 +183,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                                 type="number"
                                                 value={data.max_extra_person}
                                                 onChange={(e) => setData('max_extra_person', e.target.value)}
-                                                className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                                className="bg-background border-border"
                                             />
                                             {errors.max_extra_person && <p className="text-red-500 text-sm">{errors.max_extra_person}</p>}
                                         </div>
@@ -197,7 +197,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                                 id="type_of_bed"
                                                 value={data.type_of_bed}
                                                 onChange={(e) => setData('type_of_bed', e.target.value)}
-                                                className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                                className="bg-background border-border"
                                             />
                                             {errors.type_of_bed && <p className="text-red-500 text-sm">{errors.type_of_bed}</p>}
                                         </div>
@@ -213,7 +213,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                             value={data.room_amenities}
                                             onChange={(e) => setData('room_amenities', e.target.value)}
                                             placeholder="e.g. WiFi, AC, TV"
-                                            className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                            className="bg-background border-border"
                                         />
                                         {errors.room_amenities && <p className="text-red-500 text-sm">{errors.room_amenities}</p>}
                                     </div>
@@ -229,10 +229,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                             onChange={(e) => setData('status', e.target.value)}
                                             className={selectClass}
                                         >
-                                            <option value="available" className="dark:bg-gray-800">Available</option>
-                                            <option value="booked" className="dark:bg-gray-800">Booked</option>
-                                            <option value="occupied" className="dark:bg-gray-800">Occupied</option>
-                                            <option value="unavailable" className="dark:bg-gray-800">Unavailable</option>
+                                            <option value="unavailable" className="bg-card">Unavailable</option>
                                         </select>
                                         {errors.status && <p className="text-red-500 text-sm">{errors.status}</p>}
                                     </div>
@@ -243,7 +240,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                             <ImagePlus className="size-4" /> Room Image
                                         </Label>
                                         
-                                        <div className="flex items-center gap-4 rounded-md border border-input p-4 dark:border-gray-700 dark:bg-gray-900/50">
+                                        <div className="flex items-center gap-4 rounded-md border border-input p-4 bg-muted/50">
                                             {/* Preview */}
                                             <div className="shrink-0">
                                                 <img
@@ -257,7 +254,7 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                                 <Input
                                                     type="file"
                                                     onChange={(e) => setData('img_url', e.target.files ? e.target.files[0] : null)}
-                                                    className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 file:dark:text-white"
+                                                    className="bg-background border-border"
                                                 />
                                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                                     Leave empty to keep current image.

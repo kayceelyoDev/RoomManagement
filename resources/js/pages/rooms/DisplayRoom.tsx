@@ -1,13 +1,12 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import roomCategoryRoute from '@/routes/roomcategory'; // Ensure you have this route defined
+import roomcategory from '@/routes/roomcategory';
 import roomsRoute from '@/routes/rooms';
 import { Room } from '@/types/Rooms';
 import { Head, Link, router } from '@inertiajs/react';
 import { BedDouble, Edit, Layers, Plus, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import UpdateRoomForm from './modals/UpdateRoomForm';
-import roomcategory from '@/routes/roomcategory';
 
 // 1. Define Interfaces
 interface Category {
@@ -46,35 +45,44 @@ export default function DisplayRoom({ rooms, categories }: Props) {
     // Helper for status badge colors
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'available': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800';
-            case 'booked': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800';
-            case 'occupied': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800';
-            default: return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
+            case 'available':
+                return 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:border-primary/30';
+            case 'booked':
+                return 'bg-accent/10 text-accent border-accent/20 dark:bg-accent/20 dark:border-accent/30';
+            case 'occupied':
+                return 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:border-primary/30';
+            default:
+                return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
         }
     };
 
     return (
-        <AppLayout breadcrumbs={[{ title: 'Rooms', href: roomsRoute.index.url() }]}>
+        <AppLayout
+            breadcrumbs={[{ title: 'Rooms', href: roomsRoute.index.url() }]}
+        >
             <Head title="Manage Rooms" />
 
-            <div className="py-12 bg-gray-50 dark:bg-gray-900 min-h-screen">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-
+            <div className="min-h-screen bg-background py-12">
+                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     {/* Header Section */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                         <div>
-                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                            <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                                 Room Management
                             </h2>
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                Manage your room listings, prices, and availability.
+                                Manage your room listings, prices, and
+                                availability.
                             </p>
                         </div>
 
                         <div className="flex gap-3">
                             {/* Add Category Button */}
                             <Link href={roomcategory.index.url()}>
-                                <Button variant="outline" className="flex items-center gap-2 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center gap-2 hover:bg-muted dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted"
+                                >
                                     <Layers className="size-4" />
                                     Add Category
                                 </Button>
@@ -82,7 +90,7 @@ export default function DisplayRoom({ rooms, categories }: Props) {
 
                             {/* Add Room Button */}
                             <Link href={roomsRoute.create.url()}>
-                                <Button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all hover:shadow-lg">
+                                <Button className="flex items-center gap-2 bg-primary text-primary-foreground shadow-md transition-all hover:bg-primary/90 hover:shadow-lg">
                                     <Plus className="size-4" />
                                     Add Room
                                 </Button>
@@ -92,74 +100,91 @@ export default function DisplayRoom({ rooms, categories }: Props) {
 
                     {/* Rooms Grid */}
                     {rooms.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {rooms.map((room) => (
                                 <div
                                     key={room.id}
-                                    className="group relative flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900"
+                                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:border-primary/50 hover:shadow-md dark:hover:border-primary/30"
                                 >
                                     {/* Image Section */}
-                                    <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                                    <div className="relative aspect-video w-full overflow-hidden bg-muted">
                                         <img
                                             src={room.img_full_path} // Check that this variable name is exact
                                             alt={room.room_name}
                                             className="h-full w-full object-cover"
                                             // Add this to see if there's a hidden error
-                                            onError={(e) => console.error("Image failed to load:", room.img_full_path)}
+                                            onError={(e) =>
+                                                console.error(
+                                                    'Image failed to load:',
+                                                    room.img_full_path,
+                                                )
+                                            }
                                         />
 
                                         {/* Status Badge */}
                                         <div className="absolute top-3 right-3">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border backdrop-blur-md ${getStatusColor(room.status)}`}>
-                                                {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
+                                            <span
+                                                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold backdrop-blur-md ${getStatusColor(room.status)}`}
+                                            >
+                                                {room.status
+                                                    .charAt(0)
+                                                    .toUpperCase() +
+                                                    room.status.slice(1)}
                                             </span>
                                         </div>
 
                                         {/* Price Tag */}
                                         <div className="absolute bottom-3 left-3">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold bg-white/90 dark:bg-black/80 text-gray-900 dark:text-white shadow-sm backdrop-blur-sm">
-                                                ₱{room.room_price.toLocaleString()}
-                                                <span className="text-xs font-normal text-gray-500 ml-1">/night</span>
+                                            <span className="inline-flex items-center rounded-lg bg-white/90 px-3 py-1 text-sm font-bold text-gray-900 shadow-sm backdrop-blur-sm dark:bg-black/80 dark:text-white">
+                                                ₱
+                                                {room.room_price.toLocaleString()}
+                                                <span className="ml-1 text-xs font-normal text-gray-500">
+                                                    /night
+                                                </span>
                                             </span>
                                         </div>
                                     </div>
 
                                     {/* Content Section */}
-                                    <div className="flex flex-col flex-1 p-5">
-                                        <div className="flex justify-between items-start mb-2">
+                                    <div className="flex flex-1 flex-col p-5">
+                                        <div className="mb-2 flex items-start justify-between">
                                             <div>
-                                                <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mb-1 uppercase tracking-wider">
+                                                <p className="mb-1 text-xs font-medium tracking-wider text-primary uppercase">
                                                     {room.category_name}
                                                 </p>
-                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1">
+                                                <h3 className="line-clamp-1 text-lg font-bold text-gray-900 dark:text-white">
                                                     {room.room_name}
                                                 </h3>
                                             </div>
                                         </div>
 
-                                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4 h-10">
+                                        <p className="mb-4 line-clamp-2 h-10 text-sm text-gray-600 dark:text-gray-400">
                                             {room.room_description}
                                         </p>
 
                                         {/* Specs */}
-                                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mb-6 py-3 border-t border-b border-gray-100 dark:border-gray-700">
+                                        <div className="mb-6 flex items-center gap-4 border-t border-b border-gray-100 py-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
                                             <div className="flex items-center gap-1.5">
                                                 <BedDouble className="size-4" />
                                                 <span>{room.type_of_bed}</span>
                                             </div>
-                                            <div className="w-px h-4 bg-gray-200 dark:bg-gray-700"></div>
+                                            <div className="h-4 w-px bg-border"></div>
                                             <div className="flex items-center gap-1.5">
                                                 <Users className="size-4" />
-                                                <span>Max +{room.max_extra_person}</span>
+                                                <span>
+                                                    Max +{room.max_extra_person}
+                                                </span>
                                             </div>
                                         </div>
 
                                         {/* Actions */}
                                         <div className="mt-auto flex gap-2">
                                             <Button
-                                                onClick={() => openEditModal(room)}
+                                                onClick={() =>
+                                                    openEditModal(room)
+                                                }
                                                 variant="outline"
-                                                className="flex-1 gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                                                className="flex-1 gap-2 border-border text-foreground hover:bg-muted"
                                             >
                                                 <Edit className="size-4" />
                                                 Edit
@@ -168,7 +193,7 @@ export default function DisplayRoom({ rooms, categories }: Props) {
                                             <Button
                                                 onClick={() => deleteRoom(room)}
                                                 variant="destructive"
-                                                className="flex-none px-3 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30 dark:hover:bg-red-900/40"
+                                                className="flex-none border border-red-100 bg-red-50 px-3 text-red-600 hover:bg-red-100 hover:text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
                                             >
                                                 <Trash2 className="size-4" />
                                             </Button>
@@ -179,16 +204,20 @@ export default function DisplayRoom({ rooms, categories }: Props) {
                         </div>
                     ) : (
                         // Empty State
-                        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
-                            <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+                        <div className="rounded-2xl border border-dashed border-border bg-card py-20 text-center">
+                            <div className="mx-auto mb-4 h-12 w-12 text-gray-400">
                                 <Layers className="h-full w-full" />
                             </div>
-                            <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">No rooms available</h3>
-                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new room listing.</p>
+                            <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                                No rooms available
+                            </h3>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                Get started by creating a new room listing.
+                            </p>
                             <div className="mt-6">
                                 <Link href={roomsRoute.create.url()}>
-                                    <Button className="bg-indigo-600 hover:bg-indigo-700">
-                                        <Plus className="size-4 mr-2" />
+                                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                                        <Plus className="mr-2 size-4" />
                                         Add New Room
                                     </Button>
                                 </Link>
@@ -203,7 +232,6 @@ export default function DisplayRoom({ rooms, categories }: Props) {
                         isOpen={isEditOpen}
                         onClose={closeEditModal}
                     />
-
                 </div>
             </div>
         </AppLayout>

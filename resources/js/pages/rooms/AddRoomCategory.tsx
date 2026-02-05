@@ -78,7 +78,7 @@ function CategoryFormModal({
                 <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
-                            <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all dark:bg-gray-800">
+                            <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-card p-6 shadow-xl transition-all border border-border">
                                 <div className="flex items-center justify-between mb-5">
                                     <Dialog.Title as="h3" className="text-lg font-bold text-gray-900 dark:text-white">
                                         {isEditMode ? 'Edit Category' : 'Add New Category'}
@@ -99,7 +99,7 @@ function CategoryFormModal({
                                             value={data.room_category}
                                             onChange={(e) => setData('room_category', e.target.value)}
                                             placeholder="e.g. Deluxe Suite"
-                                            className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                            className="bg-background border-border text-foreground"
                                         />
                                         {errors.room_category && <p className="text-sm text-red-500">{errors.room_category}</p>}
                                     </div>
@@ -136,7 +136,7 @@ function CategoryFormModal({
                                                 value={data.room_capacity}
                                                 onChange={(e) => setData('room_capacity', e.target.value)}
                                                 placeholder="Max pax"
-                                                className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                                className="bg-background border-border"
                                             />
                                             {errors.room_capacity && <p className="text-sm text-red-500">{errors.room_capacity}</p>}
                                         </div>
@@ -144,7 +144,7 @@ function CategoryFormModal({
 
                                     <div className="mt-6 flex justify-end gap-3">
                                         <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                                        <Button type="submit" disabled={processing} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                                        <Button type="submit" disabled={processing} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                                             <Save className="size-4 mr-2" />
                                             {processing ? 'Saving...' : 'Save'}
                                         </Button>
@@ -197,16 +197,16 @@ export default function RoomCategoryPage({ categories = [] }: Props) { // Defaul
                                 Define types of rooms, their prices, and capacities.
                             </p>
                         </div>
-                        <Button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button onClick={openAddModal} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             <Plus className="size-4 mr-2" /> Add Category
                         </Button>
                     </div>
 
                     {/* Categories List */}
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg border dark:border-gray-700">
+                    <div className="bg-card overflow-hidden shadow-sm sm:rounded-lg border border-border">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                                <thead className="bg-muted/50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category Name</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
@@ -214,13 +214,13 @@ export default function RoomCategoryPage({ categories = [] }: Props) { // Defaul
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                <tbody className="bg-card divide-y divide-border">
                                     {categories.length > 0 ? (
                                         categories.map((cat) => (
-                                            <tr key={cat.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <tr key={cat.id} className="hover:bg-muted/50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                                        <div className="shrink-0 h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
                                                             <Layers className="size-4" />
                                                         </div>
                                                         <span className="text-sm font-medium text-gray-900 dark:text-white">{cat.room_category}</span>
@@ -237,7 +237,7 @@ export default function RoomCategoryPage({ categories = [] }: Props) { // Defaul
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEditModal(cat)} className="h-8 w-8 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                        <Button variant="ghost" size="icon" onClick={() => openEditModal(cat)} className="h-8 w-8 text-primary hover:text-primary/80">
                                                             <Edit className="size-4" />
                                                         </Button>
                                                         <Button variant="ghost" size="icon" onClick={() => deleteCategory(cat.id)} className="h-8 w-8 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">

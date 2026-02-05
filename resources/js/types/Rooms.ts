@@ -1,4 +1,5 @@
 export interface Room {
+    room_price: any;
     id: number;
     room_categories_id: number;
     room_name: string;

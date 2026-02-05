@@ -72,8 +72,8 @@ export default function ReservationPage({ rooms, services, reservations, filters
 
     const getStatusBadge = (status: string) => {
         const styles = {
-            confirmed: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-            pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+            confirmed: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
+            pending: "bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent",
             cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
         };
         const style = styles[status as keyof typeof styles] || "bg-gray-100 text-gray-800";
@@ -97,7 +97,7 @@ export default function ReservationPage({ rooms, services, reservations, filters
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input 
                                 placeholder="Search reservations..." 
-                                className="pl-10 dark:bg-gray-800"
+                                className="pl-10 bg-background border-border"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -106,22 +106,22 @@ export default function ReservationPage({ rooms, services, reservations, filters
                             <Link href={servicesRoute.index.url()}> 
                                 <Button variant="outline">Manage Services</Button>
                             </Link>
-                            <Button onClick={() => setIsShowingAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700">
+                            <Button onClick={() => setIsShowingAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                                 Add Reservation
                             </Button>
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border dark:border-gray-700 overflow-hidden">
+                    <div className="bg-card shadow-sm rounded-lg border border-border overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-                                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 uppercase text-xs">
+                                <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
                                     <tr>
                                         <th className="px-6 py-3 text-left font-medium">Guest & Room</th>
                                         <th className="px-6 py-3 text-left font-medium">Schedule</th>
                                         <th className="px-6 py-3 text-left font-medium">Status</th>
                                         <th className="px-6 py-3 text-left font-medium text-right">Total</th>
-                                        <th className="px-6 py-3 text-right font-medium text-indigo-600">Actions</th>
+                                        <th className="px-6 py-3 text-right font-medium text-primary">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -129,19 +129,19 @@ export default function ReservationPage({ rooms, services, reservations, filters
                                         <tr key={res.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 group">
                                             <td className="px-6 py-4">
                                                 <div className="font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                                                    <User className="size-3 text-indigo-500" /> {res.guest_name}
+                                                    <User className="size-3 text-primary" /> {res.guest_name}
                                                 </div>
                                                 <div className="text-xs text-gray-500">{res.room?.room_name}</div>
                                             </td>
                                             <td className="px-6 py-4 text-xs">
-                                                <div className="text-green-600 font-medium">In: {new Date(res.check_in_date).toLocaleDateString()}</div>
+                                                <div className="text-primary font-medium">In: {new Date(res.check_in_date).toLocaleDateString()}</div>
                                                 <div className="text-red-500 mt-1">Out: {new Date(res.check_out_date).toLocaleDateString()}</div>
                                             </td>
                                             <td className="px-6 py-4">{getStatusBadge(res.status)}</td>
                                             <td className="px-6 py-4 text-right font-bold">₱{res.reservation_amount.toLocaleString()}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(res)} className="text-blue-600 hover:bg-blue-50">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(res)} className="text-primary hover:bg-primary/10">
                                                         <Edit className="size-4" />
                                                     </Button>
                                                     <Button variant="ghost" size="icon" onClick={() => handleDelete(res.id)} className="text-red-600 hover:bg-red-50">

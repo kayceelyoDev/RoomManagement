@@ -99,7 +99,7 @@ function ServiceFormModal({
                             leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
-                            <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all dark:bg-gray-800">
+                            <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-card p-6 shadow-xl transition-all border border-border">
                                 <div className="flex items-center justify-between mb-5">
                                     <Dialog.Title as="h3" className="text-lg font-bold text-gray-900 dark:text-white">
                                         {isEditMode ? 'Edit Service' : 'Add New Service'}
@@ -140,7 +140,7 @@ function ServiceFormModal({
                                                 value={data.services_price}
                                                 onChange={(e) => setData('services_price', e.target.value)}
                                                 placeholder="0.00"
-                                                className="pl-7 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                                className="pl-7 bg-background border-border text-foreground"
                                             />
                                         </div>
                                         {errors.services_price && <p className="text-sm text-red-500">{errors.services_price}</p>}
@@ -151,7 +151,7 @@ function ServiceFormModal({
                                         <Button type="button" variant="outline" onClick={onClose}>
                                             Cancel
                                         </Button>
-                                        <Button type="submit" disabled={processing} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                                        <Button type="submit" disabled={processing} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                                             <Save className="size-4 mr-2" />
                                             {processing ? 'Saving...' : 'Save'}
                                         </Button>
@@ -204,29 +204,29 @@ export default function ServicesPage({ services }: Props) {
                                 Manage add-on services available for guests.
                             </p>
                         </div>
-                        <Button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button onClick={openAddModal} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             <Plus className="size-4 mr-2" /> Add Service
                         </Button>
                     </div>
 
                     {/* Services List (Table) */}
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg border dark:border-gray-700">
+                    <div className="bg-card overflow-hidden shadow-sm sm:rounded-lg border border-border">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                                <thead className="bg-muted/50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service Name</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                <tbody className="bg-card divide-y divide-border">
                                     {services.length > 0 ? (
                                         services.map((service) => (
-                                            <tr key={service.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <tr key={service.id} className="hover:bg-muted/50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
                                                             <Tag className="size-4" />
                                                         </div>
                                                         <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -245,7 +245,7 @@ export default function ServicesPage({ services }: Props) {
                                                             variant="ghost" 
                                                             size="icon" 
                                                             onClick={() => openEditModal(service)}
-                                                            className="h-8 w-8 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                            className="h-8 w-8 text-primary hover:text-primary/80"
                                                         >
                                                             <Edit className="size-4" />
                                                         </Button>

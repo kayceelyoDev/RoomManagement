@@ -183,14 +183,14 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                 <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
-                            <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-0 shadow-2xl transition-all dark:bg-gray-900 flex flex-col md:flex-row">
+                            <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-card p-0 shadow-2xl transition-all border border-border flex flex-col md:flex-row">
 
                                 {/* LEFT SIDE: FORM */}
                                 <div className="flex-1 p-8 overflow-y-auto max-h-[85vh]">
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
-                                                <Edit className="size-6 text-amber-600 dark:text-amber-400" />
+                                            <div className="p-2 bg-accent/10 dark:bg-accent/20 rounded-lg">
+                                                <Edit className="size-6 text-accent" />
                                             </div>
                                             <Dialog.Title className="text-xl font-bold text-gray-900 dark:text-white">
                                                 Edit Reservation
@@ -210,7 +210,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                 <select
                                                     value={data.room_id}
                                                     onChange={e => setData('room_id', e.target.value)}
-                                                    className={`w-full rounded-lg border-gray-300 bg-gray-50 p-2.5 text-sm focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white ${errors.room_id ? 'border-red-500' : ''}`}
+                                                    className={`w-full rounded-lg border-input bg-background p-2.5 text-sm focus:ring-primary ${errors.room_id ? 'border-red-500' : ''}`}
                                                 >
                                                     {rooms.map((room) => (
                                                         <option key={room.id} value={room.id}>
@@ -229,7 +229,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                     type="text"
                                                     value={data.guest_name}
                                                     onChange={e => setData('guest_name', e.target.value)}
-                                                    className={`w-full rounded-lg border-gray-300 bg-gray-50 p-2.5 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white ${errors.guest_name ? 'border-red-500' : ''}`}
+                                                    className={`w-full rounded-lg border-input bg-background p-2.5 text-sm ${errors.guest_name ? 'border-red-500' : ''}`}
                                                 />
                                                 <ErrorMessage message={errors.guest_name} />
                                             </div>
@@ -242,7 +242,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                     type="text"
                                                     value={data.contact_number}
                                                     onChange={e => setData('contact_number', e.target.value)}
-                                                    className={`w-full rounded-lg border-gray-300 bg-gray-50 p-2.5 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white ${errors.contact_number ? 'border-red-500' : ''}`}
+                                                    className={`w-full rounded-lg border-input bg-background p-2.5 text-sm ${errors.contact_number ? 'border-red-500' : ''}`}
                                                 />
                                                 <ErrorMessage message={errors.contact_number} />
                                             </div>
@@ -257,7 +257,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                     type="datetime-local"
                                                     value={data.check_in_date}
                                                     onChange={e => setData('check_in_date', e.target.value)}
-                                                    className={`w-full rounded-lg border-gray-300 bg-gray-50 p-2.5 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white ${errors.check_in_date ? 'border-red-500' : ''}`}
+                                                    className={`w-full rounded-lg border-input bg-background p-2.5 text-sm ${errors.check_in_date ? 'border-red-500' : ''}`}
                                                 />
                                                 <ErrorMessage message={errors.check_in_date} />
                                             </div>
@@ -269,7 +269,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                     type="datetime-local"
                                                     value={data.check_out_date}
                                                     onChange={e => setData('check_out_date', e.target.value)}
-                                                    className={`w-full rounded-lg border-gray-300 bg-gray-50 p-2.5 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white ${errors.check_out_date ? 'border-red-500' : ''}`}
+                                                    className={`w-full rounded-lg border-input bg-background p-2.5 text-sm ${errors.check_out_date ? 'border-red-500' : ''}`}
                                                 />
                                                 <ErrorMessage message={errors.check_out_date} />
                                             </div>
@@ -283,7 +283,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                 <select
                                                     value={data.status}
                                                     onChange={e => setData('status', e.target.value)}
-                                                    className={`w-full rounded-lg border-gray-300 bg-gray-50 p-2.5 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white ${errors.status ? 'border-red-500' : ''}`}
+                                                    className={`w-full rounded-lg border-input bg-background p-2.5 text-sm ${errors.status ? 'border-red-500' : ''}`}
                                                 >
                                                     <option value="pending">Pending</option>
                                                     <option value="confirmed">Confirmed</option>
@@ -299,7 +299,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                     type="number"
                                                     value={data.total_guest}
                                                     onChange={e => setData('total_guest', parseInt(e.target.value) || 0)}
-                                                    className="w-full rounded-lg border-gray-300 bg-gray-50 p-2.5 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                                                    className="w-full rounded-lg border-input bg-background p-2.5 text-sm"
                                                     min={1} 
                                                 />
                                                 <ErrorMessage message={errors.total_guest} />
@@ -317,13 +317,13 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                     services.map((service) => {
                                                         const isSelected = data.selected_services.find(s => s.id === service.id);
                                                         return (
-                                                            <div key={service.id} className={`flex items-center justify-between p-3 rounded-lg border transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                                                            <div key={service.id} className={`flex items-center justify-between p-3 rounded-lg border transition-all ${isSelected ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-border'}`}>
                                                                 <div className="flex items-center gap-3">
                                                                     <input 
                                                                         type="checkbox"
                                                                         checked={!!isSelected}
                                                                         onChange={() => toggleService(service)}
-                                                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                                        className="rounded border-gray-300 text-primary focus:ring-primary"
                                                                     />
                                                                     <div>
                                                                         <p className="text-sm font-medium text-gray-900 dark:text-white">{service.services_name}</p>
@@ -333,12 +333,12 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                                 </div>
 
                                                                 {isSelected && (
-                                                                    <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 px-2 py-1">
-                                                                        <button type="button" onClick={() => updateServiceQuantity(service.id, -1)} className="text-gray-500 hover:text-indigo-600">
+                                                                    <div className="flex items-center gap-2 bg-background rounded-md border border-border px-2 py-1">
+                                                                        <button type="button" onClick={() => updateServiceQuantity(service.id, -1)} className="text-gray-500 hover:text-red-500">
                                                                             <Minus className="size-3" />
                                                                         </button>
                                                                         <span className="text-xs font-bold w-4 text-center dark:text-white">{isSelected.quantity}</span>
-                                                                        <button type="button" onClick={() => updateServiceQuantity(service.id, 1)} className="text-gray-500 hover:text-indigo-600">
+                                                                        <button type="button" onClick={() => updateServiceQuantity(service.id, 1)} className="text-gray-500 hover:text-primary">
                                                                             <Plus className="size-3" />
                                                                         </button>
                                                                     </div>
@@ -353,7 +353,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                 </div>
 
                                 {/* RIGHT SIDE: SUMMARY */}
-                                <div className="bg-gray-50 dark:bg-gray-800/50 border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-800 w-full md:w-80 p-8 flex flex-col justify-between">
+                                <div className="bg-muted border-t md:border-t-0 md:border-l border-border w-full md:w-80 p-8 flex flex-col justify-between">
                                     <div>
                                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Summary</h3>
                                         <div className="space-y-4">
@@ -364,7 +364,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                     <span className="font-medium dark:text-white">{priceDetails.nights} Nights</span>
                                                 </div>
                                                 {priceDetails.extraHours > 0 && (
-                                                    <div className="flex justify-between text-sm text-amber-600">
+                                                    <div className="flex justify-between text-sm text-accent">
                                                         <span>Extra Hours ({priceDetails.extraHours})</span>
                                                         <span>+10%/hr</span>
                                                     </div>
@@ -399,7 +399,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                     <div className="mt-6">
                                         <div className="flex justify-between items-center mb-6">
                                             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Amount</span>
-                                            <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
+                                            <span className="text-3xl font-black text-primary">
                                                 ₱{priceDetails.grandTotal.toLocaleString()}
                                             </span>
                                         </div>
@@ -408,7 +408,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                             <button 
                                                 type="button" 
                                                 onClick={onClose}
-                                                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 transition-colors"
+                                                className="flex-1 px-4 py-2.5 text-sm font-medium text-foreground bg-background border border-border rounded-lg hover:bg-muted transition-colors"
                                             >
                                                 Cancel
                                             </button>
@@ -416,7 +416,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                 form="update-reservation-form"
                                                 type="submit" 
                                                 disabled={processing}
-                                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-md disabled:opacity-50 transition-colors"
+                                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 shadow-md disabled:opacity-50 transition-colors"
                                             >
                                                 {processing ? 'Saving...' : 'Update'}
                                             </button>
