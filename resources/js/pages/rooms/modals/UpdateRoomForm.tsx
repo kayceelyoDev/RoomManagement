@@ -114,13 +114,13 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                             leaveTo="opacity-0 scale-95"
                         >
                             <Dialog.Panel className="w-full max-w-2xl overflow-hidden rounded-lg bg-card p-6 text-left align-middle shadow-xl transition-all border border-border">
-                                
+
                                 <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 mb-5 border-b pb-2 dark:border-gray-700">
                                     Update Room Details
                                 </Dialog.Title>
 
                                 <form onSubmit={submit} className="space-y-4">
-                                    
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {/* Room Name */}
                                         <div className="space-y-2">
@@ -229,6 +229,9 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                             onChange={(e) => setData('status', e.target.value)}
                                             className={selectClass}
                                         >
+                                            <option value="available" className="bg-card">Available</option>
+                                            <option value="booked" className="bg-card">Booked</option>
+                                            <option value="occupied" className="bg-card">Occupied</option>
                                             <option value="unavailable" className="bg-card">Unavailable</option>
                                         </select>
                                         {errors.status && <p className="text-red-500 text-sm">{errors.status}</p>}
@@ -239,12 +242,12 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                         <Label className="flex items-center gap-2 dark:text-gray-200">
                                             <ImagePlus className="size-4" /> Room Image
                                         </Label>
-                                        
+
                                         <div className="flex items-center gap-4 rounded-md border border-input p-4 bg-muted/50">
                                             {/* Preview */}
                                             <div className="shrink-0">
                                                 <img
-                                                    src={room.img_url ? `/storage/${room.img_url}` : 'https://placehold.co/100'} 
+                                                    src={room.img_url ? `/storage/${room.img_url}` : 'https://placehold.co/100'}
                                                     className="h-16 w-16 rounded-md object-cover border dark:border-gray-600"
                                                     alt="Current"
                                                 />
@@ -274,11 +277,12 @@ export default function UpdateRoomForm({ room, categories, isOpen, onClose }: Pr
                                         >
                                             <RotateCcw className="size-4" /> Cancel
                                         </Button>
-                                        
+
                                         <Button
                                             type="submit"
                                             disabled={processing}
-                                            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                                           
+                                            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                                         >
                                             <Save className="size-4" />
                                             {processing ? 'Updating...' : 'Save Changes'}

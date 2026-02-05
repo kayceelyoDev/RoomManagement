@@ -219,12 +219,7 @@ export default function GuestPage({ rooms = [], services = [] }: GuestPageProps)
                                     </div>
 
                                     <div className="p-5 flex flex-col flex-1">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h3 className="text-lg font-bold text-[#2C3930] line-clamp-1">{room.room_name}</h3>
-                                            <div className="flex items-center gap-1 text-yellow-500">
-                                                <Star size={14} fill="currentColor" /> <span className="text-xs font-bold text-gray-600">4.8</span>
-                                            </div>
-                                        </div>
+        
 
                                         <p className="text-xs text-gray-500 line-clamp-2 mb-4 leading-relaxed">{room.room_description}</p>
 
@@ -320,12 +315,7 @@ export default function GuestPage({ rooms = [], services = [] }: GuestPageProps)
                 </div>
             )}
 
-            {/* --- 2. ADD RESERVATION MODAL --- */}
-            {/* INTEGRATION NOTES:
-                1. role="guest" ensures status field is hidden.
-                2. rooms={rooms} passes all rooms so calendar works if they switch rooms.
-                3. preSelectedRoomId ensures the correct room is active in the modal.
-            */}
+           
             {isReservationModalOpen && selectedRoom && (
                 <AddReservation 
                     isOpen={isReservationModalOpen}

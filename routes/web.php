@@ -29,7 +29,8 @@ Route::resource('reservation', ReservationController::class)->middleware(['auth'
 Route::get('/reservation/verify/{id}', [emailVerificationController::class, 'verifyReservation'])->name('reservation.verify')->middleware('signed');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-
+    Route::post('/reservation/cancel/{reservation}', [GuestPage::class, 'cancel'])
+        ->name('reservation.cancel');
     Route::get('guestpage', [GuestPage::class, 'guestPageRooms'])->name('guest.guestpage');
      Route::get('/myreservation', [GuestPage::class, 'myReservations'])->name('guest.myreservation');
 });

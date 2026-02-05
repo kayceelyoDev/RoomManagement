@@ -18,35 +18,43 @@ class RoomsController extends Controller
      */
     public function index()
     {
-        // 1. Fetch Categories
-        $categories = RoomCategory::all(['id', 'room_category', 'price']);
+        // 1. Fetch Categories (Lean Select)
+        $categories = RoomCategory::select('id', 'room_category', 'price')->get();
 
-        // 2. Fetch Rooms with eager loading
-        $rooms = Rooms::with('roomCategory')
+        // 2. Fetch Rooms with optimized columns and eager loading
+        $rooms = Rooms::query()
+            ->select([
+                'id', 
+                'room_categories_id', 
+                'room_name', 
+                'room_description', 
+                'max_extra_person', 
+                'room_amenities', 
+                'type_of_bed', 
+                'status', 
+                'img_url'
+            ])
+            ->with(['roomCategory:id,room_category,price']) // Only fetch needed category fields
             ->latest()
             ->get()
             ->map(function ($room) {
+                // Transform for Frontend
                 return [
                     'id' => $room->id,
                     'room_categories_id' => $room->room_categories_id,
                     'room_name' => $room->room_name,
                     'room_description' => $room->room_description,
-
-                    
                     'room_price' => $room->roomCategory ? (float) $room->roomCategory->price : 0,
-
                     'category_name' => $room->roomCategory ? $room->roomCategory->room_category : 'N/A',
                     'max_extra_person' => $room->max_extra_person,
                     'room_amenities' => $room->room_amenities,
                     'type_of_bed' => $room->type_of_bed,
                     'status' => $room->status,
-
-                   
                     'img_full_path' => $room->img_url ?: 'https://placehold.co/600x400?text=No+Room+Image',
                 ];
             });
 
-        return inertia('rooms/DisplayRoom', [
+        return Inertia::render('rooms/DisplayRoom', [
             'rooms' => $rooms,
             'categories' => $categories
         ]);
@@ -57,7 +65,8 @@ class RoomsController extends Controller
      */
     public function create()
     {
-        $categories = RoomCategory::all(['id', 'room_category', 'price']);
+        // Only fetch what the dropdown needs
+        $categories = RoomCategory::select('id', 'room_category', 'price')->get();
         return Inertia::render('rooms/RoomPage', ['categories' => $categories]);
     }
 
@@ -75,27 +84,11 @@ class RoomsController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(Rooms $rooms)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Rooms $rooms)
-    {
-        //
-    }
-
-    /**
      * Update the specified resource in storage.
      */
-    public function update(RoomRequest $roomrequest, RoomServices $roomServices, Rooms $room)
+    public function update(RoomRequest $request, RoomServices $roomServices, Rooms $room)
     {
-        $data = $roomrequest->validated();
+        $data = $request->validated();
 
         // Prevent overwriting image with null if no file was uploaded
         if (array_key_exists('img_url', $data) && is_null($data['img_url'])) {
@@ -112,14 +105,14 @@ class RoomsController extends Controller
      */
     public function destroy(Rooms $room, RoomServices $services)
     {
-
+        // Efficient Check: Don't load all reservations, just check existence
         if ($room->reservations()->exists()) {
             return redirect()->back()->withErrors([
                 'error' => 'Cannot delete this room because it has existing reservations.'
             ]);
         }
 
-        $services->deleteRoom($room); // Your existing delete logic
+        $services->deleteRoom($room); 
 
         return redirect()->route('rooms.index')->with('success', 'Room deleted successfully.');
     }

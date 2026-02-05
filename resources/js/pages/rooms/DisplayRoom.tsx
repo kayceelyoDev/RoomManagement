@@ -44,15 +44,24 @@ export default function DisplayRoom({ rooms, categories }: Props) {
 
     // Helper for status badge colors
     const getStatusColor = (status: string) => {
-        switch (status) {
+        switch (status.toLowerCase()) {
             case 'available':
-                return 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:border-primary/30';
+                // Primary is Sage/Lime. Using solid color ensures it pops against the photo.
+                // text-primary-foreground automatically picks the correct contrast color (Cream or Dark Green).
+                return 'bg-primary text-primary-foreground border-primary shadow-sm';
+
             case 'booked':
-                return 'bg-accent/10 text-accent border-accent/20 dark:bg-accent/20 dark:border-accent/30';
+                // Secondary is Lime/Sage. Good for intermediate state.
+                return 'bg-secondary text-secondary-foreground border-secondary shadow-sm';
+
             case 'occupied':
-                return 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:border-primary/30';
+            case 'unavailable':
+                // Destructive is Red. High visibility for unavailable items.
+                return 'bg-destructive text-destructive-foreground border-destructive shadow-sm';
+
             default:
-                return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
+                // Fallback for unknown statuses
+                return 'bg-muted text-muted-foreground border-border shadow-sm';
         }
     };
 

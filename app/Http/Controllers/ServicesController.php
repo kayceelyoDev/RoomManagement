@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Services;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule; // Needed for unique checks
 use Inertia\Inertia;
 
 class ServicesController extends Controller
@@ -12,24 +13,16 @@ class ServicesController extends Controller
     /**
      * Display a listing of the resource.
      */
-   public function index()
+    public function index()
     {
-        // Fetch services
-        $services = Services::latest()->get();
+        // Optimization: Select specific columns
+        $services = Services::select('id', 'services_name', 'services_price')
+            ->latest()
+            ->get();
 
-        // RENDER the Inertia View and pass the data
-        // Ensure the path 'Services/AddRoomServices' matches your file structure in resources/js/Pages
         return Inertia::render('roomServices/AddRoomServices', [
             'services' => $services
         ]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
     }
 
     /**
@@ -37,41 +30,30 @@ class ServicesController extends Controller
      */
     public function store(Request $request)
     {
-        //
         $validated = $request->validate([
-            'services_name' => ['required'],
-            'services_price'=>['required']
+            'services_name' => ['required', 'string', 'max:255', 'unique:services,services_name'],
+            'services_price' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $data = Services::create($validated);
+        Services::create($validated);
 
-        return redirect()->route('services.index');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Services $services)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Services $services)
-    {
-        //
+        return redirect()->route('services.index')->with('success', 'Service created successfully.');
     }
 
     /**
      * Update the specified resource in storage.
      */
-   public function update(Request $request, Services $service)
+    public function update(Request $request, Services $service)
     {
         $validated = $request->validate([
-            'services_name' => 'required|string|max:255',
-            'services_price' => 'required|numeric|min:0',
+            'services_name' => [
+                'required', 
+                'string', 
+                'max:255', 
+                // Ignore current ID for unique check
+                Rule::unique('services', 'services_name')->ignore($service->id)
+            ],
+            'services_price' => ['required', 'numeric', 'min:0'],
         ]);
 
         $service->update($validated);
@@ -84,6 +66,14 @@ class ServicesController extends Controller
      */
     public function destroy(Services $service)
     {
+        // Safety Check: Don't delete service if it's attached to reservations
+        // This assumes you have a 'reservations' relationship defined in your Service model
+        if ($service->reservations()->exists()) {
+            return redirect()->back()->withErrors([
+                'error' => 'Cannot delete this service because it is part of existing reservations.'
+            ]);
+        }
+
         $service->delete();
 
         return redirect()->back()->with('success', 'Service deleted successfully.');

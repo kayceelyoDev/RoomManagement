@@ -20,7 +20,7 @@ return new class extends Migration
             $table->integer('max_extra_person');
             $table->string('room_amenities');
             $table->string('type_of_bed');
-            $table->enum('status',['available', 'booked', 'occupied', 'unvailable']);
+            $table->enum('status',['available', 'booked', 'occupied', 'unavailable']);
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
         });

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\enum\ReservationEnum;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,9 +25,10 @@ class Reservation extends Model
     ];
 
     protected $casts = [
-        'check_in_date' => 'datetime',
-        'check_out_date' => 'datetime',
-    ];
+    'status' => ReservationEnum::class, // <--- Add this line
+    'check_in_date' => 'datetime',
+    'check_out_date' => 'datetime',
+];
 
     public function user() 
     {

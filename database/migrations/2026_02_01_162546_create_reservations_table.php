@@ -22,7 +22,7 @@ return new class extends Migration
         $table->dateTime('check_in_date');
         $table->dateTime('check_out_date');
         $table->decimal('reservation_amount', 10, 2); // Best practice for money
-        $table->string('status')->default('pending');
+        $table->enum('status',['pending', 'confirmed','cancelled','checked_in','checked_out'])->default('pending');
         $table->timestamps();
     });
     }

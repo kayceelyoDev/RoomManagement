@@ -6,12 +6,11 @@ import servicesRoute from '@/routes/services';
 import { BreadcrumbItem } from '@/types';
 import { Room } from '@/types/Rooms';
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarDays, CheckCircle, Clock, Edit, Search, Trash2, User, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, Edit, Search, Trash2, User, XCircle, RefreshCw } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import AddReservation, { Service } from './modal/AddReservation';
 import UpdateReservation from './modal/UpdateReservation';
 
-// --- Synchronized Types ---
 export interface Reservation {
     id: number;
     room_id: number;
@@ -23,10 +22,10 @@ export interface Reservation {
     status: string;
     reservation_amount: number;
     room?: Room;
-    services?: { 
-        id: number; 
-        services_name: string; 
-        pivot: { quantity: number; price: number; } 
+    services?: {
+        id: number;
+        services_name: string;
+        pivot: { quantity: number; price: number; }
     }[];
 }
 
@@ -42,7 +41,28 @@ export default function ReservationPage({ rooms, services, reservations, filters
     const [isShowingUpdateModal, setIsShowingUpdateModal] = useState(false);
     const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
     const [searchQuery, setSearchQuery] = useState(filters?.search || '');
+    const [isPolling, setIsPolling] = useState(false); // Visual indicator for updates
 
+    // --- EFFICIENT AUTO-UPDATE (POLLING) ---
+    useEffect(() => {
+        // Run every 5 seconds (5000ms). Adjust this number based on your needs.
+        // 5000ms is usually a good balance between "instant" and "server load".
+        const interval = setInterval(() => {
+            if (!isShowingAddModal && !isShowingUpdateModal) { // Don't refresh if a modal is open (prevents input lag)
+                setIsPolling(true);
+                router.reload({
+                    only: ['reservations', 'rooms'], // EFFICIENT: Only fetch these props
+                    preserveScroll: true,
+                    preserveState: true,
+                    onFinish: () => setIsPolling(false),
+                });
+            }
+        }, 5000); 
+
+        return () => clearInterval(interval);
+    }, [isShowingAddModal, isShowingUpdateModal]);
+
+    // --- Search Debounce ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
             if (searchQuery !== (filters?.search || '')) {
@@ -61,7 +81,6 @@ export default function ReservationPage({ rooms, services, reservations, filters
         setIsShowingUpdateModal(true);
     };
 
-    // FIX: Acceptance of number and conversion to string for route helper
     const handleDelete = (id: number) => {
         if (confirm('Are you sure you want to delete this reservation?')) {
             router.delete(reservationRoute.destroy.url(id.toString()));
@@ -79,9 +98,9 @@ export default function ReservationPage({ rooms, services, reservations, filters
         const style = styles[status as keyof typeof styles] || "bg-gray-100 text-gray-800";
         return (
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${style}`}>
-                {status === 'confirmed' && <CheckCircle className="size-3"/>}
-                {status === 'pending' && <Clock className="size-3"/>}
-                {status === 'cancelled' && <XCircle className="size-3"/>}
+                {status === 'confirmed' && <CheckCircle className="size-3" />}
+                {status === 'pending' && <Clock className="size-3" />}
+                {status === 'cancelled' && <XCircle className="size-3" />}
                 {status.charAt(0).toUpperCase() + status.slice(1)}
             </span>
         );
@@ -95,21 +114,31 @@ export default function ReservationPage({ rooms, services, reservations, filters
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input 
-                                placeholder="Search reservations..." 
+                            <Input
+                                placeholder="Search reservations..."
                                 className="pl-10 bg-background border-border"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
                         <div className="flex gap-3">
-                            <Link href={servicesRoute.index.url()}> 
+                            <Link href={servicesRoute.index.url()}>
                                 <Button variant="outline">Manage Services</Button>
                             </Link>
                             <Button onClick={() => setIsShowingAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                                 Add Reservation
                             </Button>
                         </div>
+                    </div>
+
+                    {/* Auto-Update Indicator */}
+                    <div className="flex justify-end mb-2 h-4">
+                        {isPolling && (
+                            <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-gray-400 tracking-wider animate-pulse">
+                                <RefreshCw className="size-3 animate-spin" />
+                                Updating...
+                            </span>
+                        )}
                     </div>
 
                     <div className="bg-card shadow-sm rounded-lg border border-border overflow-hidden">
@@ -158,9 +187,9 @@ export default function ReservationPage({ rooms, services, reservations, filters
                 </div>
             </div>
 
-            <AddReservation 
-                rooms={rooms} services={services} 
-                isOpen={isShowingAddModal} onClose={() => setIsShowingAddModal(false)} 
+            <AddReservation
+                rooms={rooms} services={services}
+                isOpen={isShowingAddModal} onClose={() => setIsShowingAddModal(false)}
             />
 
             {selectedReservation && (

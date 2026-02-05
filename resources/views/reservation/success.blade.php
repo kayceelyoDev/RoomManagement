@@ -238,7 +238,7 @@
                     We have sent a receipt to your email.
                 </p>
 
-                <a href="{{ url('/dashboard') }}" class="btn">
+                <a href="{{ url('/guestpage') }}" class="btn">
                     Go to Dashboard
                 </a>
             </div>

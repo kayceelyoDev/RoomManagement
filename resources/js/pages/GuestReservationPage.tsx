@@ -11,10 +11,14 @@ import {
     BedDouble, 
     CreditCard, 
     Sparkles, 
-    ArrowLeft
+    ArrowLeft,
+    Trash2,
+    AlertTriangle,
+    Info,
+    Mail
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { logout } from '@/routes'; // Ensure this route helper exists
+import { format, parseISO, formatDistanceToNow } from 'date-fns'; // <--- Added formatDistanceToNow
+import { logout } from '@/routes'; 
 import guest from '@/routes/guest';
 
 // --- Types ---
@@ -83,12 +87,23 @@ export default function GuestReservationPage({ reservations, notifications, user
         return `/storage/${url}`;
     };
 
+    // --- NEW: Helper for "2 hours ago" format ---
+    const getRelativeTime = (dateString: string) => {
+        try {
+            return formatDistanceToNow(parseISO(dateString), { addSuffix: true });
+        } catch (error) {
+            return 'recently';
+        }
+    };
+
     const getStatusStyles = (status: string) => {
         switch (status.toLowerCase()) {
             case 'confirmed': return 'bg-green-100 text-green-700 border-green-200';
             case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
             case 'cancelled': return 'bg-red-100 text-red-700 border-red-200';
-            case 'completed': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'checked-in': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'checked-out': return 'bg-gray-100 text-gray-700 border-gray-200';
+            case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
             default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
@@ -98,8 +113,20 @@ export default function GuestReservationPage({ reservations, notifications, user
             case 'confirmed': return <CheckCircle size={14} />;
             case 'pending': return <Clock size={14} />;
             case 'cancelled': return <XCircle size={14} />;
-            case 'completed': return <Sparkles size={14} />;
+            case 'checked-in': return <Sparkles size={14} />;
             default: return <Clock size={14} />;
+        }
+    };
+
+    // --- Action Handlers ---
+    const handleCancel = (id: number) => {
+        if (confirm('Are you sure you want to cancel this reservation? This action cannot be undone.')) {
+            router.post(`/reservation/cancel/${id}`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Optional: Add toast notification logic here
+                }
+            });
         }
     };
 
@@ -142,7 +169,17 @@ export default function GuestReservationPage({ reservations, notifications, user
                                     </div>
                                 </div>
                                 <h2 className="text-xl font-bold text-[#2C3930]">{user.name}</h2>
-                                <p className="text-sm text-gray-500 mb-6">{user.email}</p>
+                                
+                                {/* Updated User Info Section */}
+                                <div className="flex flex-col items-center gap-1 mb-6">
+                                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                                        <Mail size={12} />
+                                        <span>{user.email}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+                                        Joined {getRelativeTime(user.created_at)}
+                                    </div>
+                                </div>
                                 
                                 <Link 
                                     href={logout()} 
@@ -156,27 +193,39 @@ export default function GuestReservationPage({ reservations, notifications, user
                         </div>
 
                         {/* Notifications Card */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Bell size={18} className="text-[#628141]" />
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="p-4 border-b border-gray-50 flex items-center gap-2 bg-gray-50/50">
+                                <Bell size={16} className="text-[#628141]" />
                                 <h3 className="font-bold text-[#2C3930] text-sm uppercase tracking-wide">Notifications</h3>
                             </div>
                             
-                            <div className="space-y-3">
+                            <div className="divide-y divide-gray-100">
                                 {notifications.length > 0 ? (
                                     notifications.map((notif) => (
-                                        <div key={notif.id} className={`p-4 rounded-xl border-l-4 text-sm ${
-                                            notif.type === 'warning' ? 'bg-amber-50 border-amber-400' : 
-                                            notif.type === 'success' ? 'bg-green-50 border-green-400' : 
-                                            'bg-blue-50 border-blue-400'
-                                        }`}>
-                                            <p className="font-bold text-gray-800 mb-1">{notif.title}</p>
-                                            <p className="text-gray-600 leading-relaxed">{notif.message}</p>
+                                        <div key={notif.id} className="p-4 flex gap-3 hover:bg-[#F9FAFB] transition-colors">
+                                            <div className="flex-shrink-0 mt-0.5">
+                                                {notif.type === 'warning' && <AlertTriangle size={18} className="text-amber-500" />}
+                                                {notif.type === 'success' && <CheckCircle size={18} className="text-[#628141]" />}
+                                                {notif.type === 'info' && <Info size={18} className="text-blue-500" />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className={`text-sm font-bold ${
+                                                    notif.type === 'warning' ? 'text-amber-700' :
+                                                    notif.type === 'success' ? 'text-[#2C3930]' :
+                                                    'text-gray-700'
+                                                }`}>
+                                                    {notif.title}
+                                                </h4>
+                                                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                                                    {notif.message}
+                                                </p>
+                                            </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="text-center py-6 text-gray-400 text-sm italic">
-                                        No new notifications
+                                    <div className="text-center py-8 text-gray-400 text-sm italic flex flex-col items-center gap-2">
+                                        <Bell size={24} className="opacity-20" />
+                                        <p>No new notifications</p>
                                     </div>
                                 )}
                             </div>
@@ -222,7 +271,7 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                         <h3 className="text-xl font-bold text-[#2C3930] mt-1">{res.room.room_name}</h3>
                                                     </div>
                                                     <div className="text-right">
-                                                        <span className="block text-xs text-gray-400 uppercase font-bold">Total Paid</span>
+                                                        <span className="block text-xs text-gray-400 uppercase font-bold">Total Amount</span>
                                                         <span className="text-lg font-bold text-[#2C3930]">{formatCurrency(res.reservation_amount)}</span>
                                                     </div>
                                                 </div>
@@ -246,7 +295,7 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                     </div>
                                                 </div>
 
-                                                {/* Services (Pivot Data) */}
+                                                {/* Services */}
                                                 {res.services.length > 0 && (
                                                     <div className="mb-4">
                                                         <p className="text-xs font-bold text-gray-400 mb-2">ADD-ONS</p>
@@ -260,8 +309,22 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                     </div>
                                                 )}
                                                 
-                                                <div className="mt-auto text-xs text-gray-400 flex items-center gap-1 justify-end">
-                                                    <CreditCard size={12} /> Booked on {format(parseISO(res.created_at), 'MMM dd, yyyy')}
+                                                {/* Card Footer: UPDATED TIME FORMAT */}
+                                                <div className="mt-auto flex items-center justify-between pt-2">
+                                                    {/* Changed from specific date to relative time (2 hours ago) */}
+                                                    <div className="text-xs text-gray-400 flex items-center gap-1" title={format(parseISO(res.created_at), 'PPP pp')}>
+                                                        <CreditCard size={12} /> Booked {getRelativeTime(res.created_at)}
+                                                    </div>
+
+                                                    { !['cancelled', 'checked-in', 'checked-out', 'completed'].includes(res.status.toLowerCase()) && (
+                                                        <button 
+                                                            onClick={() => handleCancel(res.id)}
+                                                            className="flex items-center gap-1.5 px-4 py-2 bg-white text-red-600 border border-red-200 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:border-red-300 transition-colors"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                            Cancel Reservation
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -275,7 +338,7 @@ export default function GuestReservationPage({ reservations, notifications, user
                                     <h3 className="text-lg font-bold text-[#2C3930]">No Reservations Yet</h3>
                                     <p className="text-sm text-gray-500 mb-6">You haven't booked any stays with us yet.</p>
                                     <Link 
-                                        href="/" 
+                                        href={guest.guestpage.url()}
                                         className="px-6 py-2.5 bg-[#2C3930] text-[#FFFDE1] rounded-lg text-sm font-bold uppercase tracking-wider hover:bg-[#628141] transition shadow-md"
                                     >
                                         Find a Room
