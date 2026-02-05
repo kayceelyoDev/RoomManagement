@@ -18,11 +18,17 @@ class ReservationServices
     /**
      * Helper to detect overlapping reservations with a 3-hour cleaning buffer.
      */
-    protected function checkAvailability($roomId, $checkIn, $checkOut, $excludeId = null)
+protected function checkAvailability($roomId, $checkIn, $checkOut, $excludeId = null)
     {
-        // 1. Format Dates Standard (Prevents SQL issues with 'T' in datetime strings)
-        $checkIn = Carbon::parse($checkIn)->format('Y-m-d H:i:s');
-        $checkOut = Carbon::parse($checkOut)->format('Y-m-d H:i:s');
+        // 1. Create Carbon instances
+        $checkInDate = Carbon::parse($checkIn);
+        $checkOutDate = Carbon::parse($checkOut);
+
+        // 2. Calculate the "Buffered Check-in" in PHP
+        // Logic: Instead of saying "DB CheckOut + 3 hours > New CheckIn",
+        // We say: "DB CheckOut > New CheckIn - 3 hours"
+        // This removes the database-specific DATE_ADD function completely.
+        $checkInThreshold = $checkInDate->copy()->subHours(3);
 
         $activeStatuses = [
             ReservationEnum::Pending,
@@ -32,10 +38,13 @@ class ReservationServices
 
         $conflicts = Reservation::where('room_id', $roomId)
             ->whereIn('status', $activeStatuses)
-            ->where(function ($query) use ($checkIn, $checkOut) {
-              
-                $query->where('check_in_date', '<', $checkOut)
-                      ->whereRaw("DATE_ADD(check_out_date, INTERVAL 3 HOUR) > ?", [$checkIn]);
+            ->where(function ($query) use ($checkInDate, $checkOutDate, $checkInThreshold) {
+                // Logic:
+                // 1. The existing reservation must start before our new reservation ends.
+                // 2. The existing reservation must end after our new reservation starts (minus buffer).
+                
+                $query->where('check_in_date', '<', $checkOutDate)
+                      ->where('check_out_date', '>', $checkInThreshold); 
             })
             ->when($excludeId, function ($query, $id) {
                 $query->where('id', '!=', $id);
@@ -43,7 +52,6 @@ class ReservationServices
             ->exists();
 
         if ($conflicts) {
-           
             throw ValidationException::withMessages([
                 'check_in_date' => ['The selected dates are no longer available (includes cleaning buffer).']
             ]);
