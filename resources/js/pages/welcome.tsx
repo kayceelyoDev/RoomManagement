@@ -3,21 +3,10 @@ import guest from '@/routes/guest';
 import type { SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { 
-    Phone, 
-    Facebook, 
-    MapPin, 
-    Mail, 
-    Menu, 
-    X, 
-    ArrowRight, 
-    BedDouble, 
-    Utensils, 
-    Waves, 
-    Armchair,
-    Users,
-    CheckCircle,
+    Phone, Facebook, MapPin, Mail, Menu, X, ArrowRight, 
+    BedDouble, Utensils, Waves, Users, CheckCircle
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // --- Types ---
 interface RoomCategory {
@@ -44,21 +33,31 @@ interface WelcomeProps {
     rooms: Room[];
 }
 
-export default function Welcome({
-    canRegister = true,
-    rooms = [], 
-}: WelcomeProps) {
+export default function Welcome({ canRegister = true, rooms = [] }: WelcomeProps) {
     const { auth } = usePage<SharedData>().props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+
+    // Lock body scroll when mobile menu is open to prevent background scrolling
+    useEffect(() => {
+        if (isMobileMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isMobileMenuOpen]);
 
     // --- Helper Functions ---
     const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
         e.preventDefault();
         const element = document.getElementById(id);
         if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-            setIsMobileMenuOpen(false); 
+            setIsMobileMenuOpen(false); // Close menu first
+            // Small timeout to allow menu to close before scrolling
+            setTimeout(() => {
+                element.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
         }
     };
 
@@ -81,8 +80,6 @@ export default function Welcome({
         <>
             <Head title="Estaca Bay Resort" />
             
-            {/* --- OPTIMIZED ANIMATION STYLES --- */}
-            {/* Using translate3d forces GPU acceleration to prevent lag */}
             <style>{`
                 @keyframes float {
                     0% { transform: translate3d(0, 0, 0); }
@@ -94,29 +91,27 @@ export default function Welcome({
                     50% { transform: translate3d(10px, 10px, 0); }
                     100% { transform: translate3d(0, 0, 0); }
                 }
-                .animate-float {
-                    animation: float 8s ease-in-out infinite;
-                    will-change: transform;
-                }
-                .animate-float-slow {
-                    animation: float-slow 12s ease-in-out infinite;
-                    will-change: transform;
-                }
+                .animate-float { animation: float 8s ease-in-out infinite; will-change: transform; }
+                .animate-float-slow { animation: float-slow 12s ease-in-out infinite; will-change: transform; }
             `}</style>
             
             <div className="min-h-screen bg-white font-sans text-[#2C3930] relative overflow-x-hidden">
                 
                 {/* --- NAVIGATION --- */}
-                <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-[#2C3930]/5 transition-all">
-                    <div className="px-6 py-4 flex items-center justify-between max-w-7xl mx-auto">
-                        <a href="#home" onClick={(e) => scrollToSection(e, 'home')} className="block hover:opacity-80 transition">
+                <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-[#2C3930]/5 transition-all">
+                    <div className="px-6 py-4 flex items-center justify-between max-w-7xl mx-auto relative z-50">
+                        
+                        {/* Logo - UPDATED: Removed circle, border, and shadow */}
+                        <a href="#home" onClick={(e) => scrollToSection(e, 'home')} className="block hover:opacity-80 transition z-50 relative">
                             <img 
                                 src="/img/logo.jpg" 
                                 alt="Estaca Bay Logo" 
-                                className="h-12 w-12 md:h-14 md:w-14 object-contain rounded-full shadow-sm border border-[#2C3930]/10" 
+                                // Changed className to remove rounded-full and border
+                                className="h-8 w-auto md:h-12 object-contain" 
                             />
                         </a>
 
+                        {/* Desktop Menu */}
                         <nav className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-[#2C3930]">
                             {['Home', 'About', 'Rooms', 'Amenities', 'Contact'].map((item) => (
                                 <a 
@@ -131,55 +126,98 @@ export default function Welcome({
                             ))}
                         </nav>
 
-                        <div className="flex items-center gap-4">
-                            <div className="hidden md:flex items-center gap-3">
-                                {auth.user ? (
-                                    <Link
-                                        href={auth.user.role === 'guest' ? guest.guestpage.url() : dashboard.url()}
-                                        className="px-6 py-2.5 bg-[#2C3930] text-[#FFFDE1] rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#628141] transition-all duration-300 shadow-lg shadow-[#2C3930]/20"
-                                    >
-                                        {auth.user.role === 'guest' ? 'My Booking' : 'Dashboard'}
-                                    </Link>
-                                ) : (
-                                    <>
-                                        <Link href={login.url()} className="text-xs font-bold uppercase tracking-wider hover:text-[#628141] transition">
-                                            Log in
-                                        </Link>
-                                        {canRegister && (
-                                            <Link href={register.url()} className="px-6 py-2.5 bg-[#628141] text-white text-xs font-bold uppercase tracking-wider rounded-full hover:bg-[#4e6632] transition-all duration-300 shadow-md">
-                                                Register
-                                            </Link>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                            <button className="md:hidden text-[#2C3930]" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-                                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                            </button>
-                        </div>
-                    </div>
-
-                    {isMobileMenuOpen && (
-                        <div className="md:hidden bg-white border-t border-gray-100 absolute w-full left-0 px-6 py-4 shadow-lg flex flex-col gap-4 text-sm font-bold uppercase text-[#2C3930]">
-                            {['Home', 'About', 'Rooms', 'Amenities', 'Contact'].map((item) => (
-                                <a key={item} href={`#${item.toLowerCase()}`} onClick={(e) => scrollToSection(e, item.toLowerCase())} className="py-2 hover:text-[#628141]">
-                                    {item}
-                                </a>
-                            ))}
-                            <div className="h-px bg-gray-100 my-2"></div>
-                            {!auth.user && (
+                        {/* Desktop Auth Buttons */}
+                        <div className="hidden md:flex items-center gap-4">
+                            {auth.user ? (
+                                <Link
+                                    href={auth.user.role === 'guest' ? guest.guestpage.url() : dashboard.url()}
+                                    className="px-6 py-2.5 bg-[#2C3930] text-[#FFFDE1] rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#628141] transition-all duration-300 shadow-lg shadow-[#2C3930]/20"
+                                >
+                                    {auth.user.role === 'guest' ? 'My Booking' : 'Dashboard'}
+                                </Link>
+                            ) : (
                                 <>
-                                    <Link href={login.url()} className="py-2">Log in</Link>
-                                    <Link href={register.url()} className="py-2 text-[#628141]">Register</Link>
+                                    <Link href={login.url()} className="text-xs font-bold uppercase tracking-wider hover:text-[#628141] transition">
+                                        Log in
+                                    </Link>
+                                    {canRegister && (
+                                        <Link href={register.url()} className="px-6 py-2.5 bg-[#628141] text-white text-xs font-bold uppercase tracking-wider rounded-full hover:bg-[#4e6632] transition-all duration-300 shadow-md">
+                                            Register
+                                        </Link>
+                                    )}
                                 </>
                             )}
                         </div>
-                    )}
+
+                        {/* Mobile Menu Toggle Button */}
+                        <button 
+                            className="md:hidden text-[#2C3930] p-2 focus:outline-none" 
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            aria-label="Toggle menu"
+                        >
+                            {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+                        </button>
+                    </div>
+
+                    {/* --- MOBILE MENU OVERLAY --- */}
+                    <div 
+                        className={`fixed inset-0 bg-[#FFFDE1] z-40 flex flex-col items-center pt-32 pb-10 px-6 transition-all duration-300 ease-in-out md:hidden ${
+                            isMobileMenuOpen 
+                                ? 'opacity-100 visible translate-y-0' 
+                                : 'opacity-0 invisible -translate-y-5 pointer-events-none'
+                        }`}
+                        style={{ height: '100dvh' }}
+                    >
+                        {/* Navigation Links */}
+                        <nav className="flex flex-col items-center gap-8 w-full">
+                            {['Home', 'About', 'Rooms', 'Amenities', 'Contact'].map((item) => (
+                                <a 
+                                    key={item} 
+                                    href={`#${item.toLowerCase()}`} 
+                                    onClick={(e) => scrollToSection(e, item.toLowerCase())} 
+                                    className="text-2xl font-serif text-[#2C3930] hover:text-[#628141] transition-colors border-b border-transparent hover:border-[#628141]/30 pb-1"
+                                >
+                                    {item}
+                                </a>
+                            ))}
+                        </nav>
+
+                        {/* Separator */}
+                        <div className="w-12 h-px bg-[#2C3930]/10 my-8"></div>
+
+                        {/* Mobile Auth Buttons */}
+                        <div className="flex flex-col gap-4 w-full max-w-xs mt-auto mb-8">
+                            {auth.user ? (
+                                <Link
+                                    href={auth.user.role === 'guest' ? guest.guestpage.url() : dashboard.url()}
+                                    className="w-full py-4 bg-[#2C3930] text-[#FFFDE1] text-center rounded-xl text-sm font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                                >
+                                    {auth.user.role === 'guest' ? 'My Booking' : 'Go to Dashboard'}
+                                </Link>
+                            ) : (
+                                <>
+                                    <Link 
+                                        href={login.url()} 
+                                        className="w-full py-4 border-2 border-[#2C3930] text-[#2C3930] text-center rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-[#2C3930] hover:text-[#FFFDE1] transition-colors"
+                                    >
+                                        Log in
+                                    </Link>
+                                    {canRegister && (
+                                        <Link 
+                                            href={register.url()} 
+                                            className="w-full py-4 bg-[#628141] text-white text-center rounded-xl text-sm font-bold uppercase tracking-widest shadow-lg hover:bg-[#4e6632] transition-colors"
+                                        >
+                                            Register Now
+                                        </Link>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </header>
 
                 {/* --- HERO SECTION --- */}
                 <section id="home" className="bg-[#FFFDE1] px-6 py-20 lg:py-32 relative overflow-hidden">
-                    {/* Optimized Background Blobs */}
                     <div className="absolute top-0 right-0 w-96 h-96 bg-[#D8E983] opacity-20 rounded-full blur-3xl pointer-events-none animate-float-slow transform-gpu"></div>
                     <div className="absolute bottom-20 left-10 w-64 h-64 bg-[#628141] opacity-10 rounded-full blur-3xl pointer-events-none animate-float transform-gpu"></div>
 
@@ -250,9 +288,7 @@ export default function Welcome({
                                         key={room.id} 
                                         className="group relative flex flex-col bg-[#FFFDE1] rounded-2xl shadow-xl border border-[#2C3930]/10 overflow-hidden transition-transform duration-300 hover:scale-[1.01] hover:shadow-2xl"
                                     >
-                                        {/* Image Section */}
                                         <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-200">
-                                            {/* Removed heavy backdrop-blur from hover overlay, simple fade instead */}
                                             <div className="absolute inset-0 bg-[#2C3930]/10 group-hover:bg-transparent transition-colors duration-300 z-10" />
                                             <img 
                                                 src={getRoomImage(room.img_url)} 
@@ -279,7 +315,6 @@ export default function Welcome({
                                             )}
                                         </div>
 
-                                        {/* Content Section */}
                                         <div className="flex flex-col flex-1 p-6">
                                             <div className="mb-2">
                                                 <h3 className="text-xl font-serif font-bold text-[#2C3930] line-clamp-1 group-hover:text-[#628141] transition-colors">

@@ -120,9 +120,7 @@ export default function GuestPage({ rooms = [], services = [] }: GuestPageProps)
             <header className="fixed top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
                     <Link href='/' className="flex items-center gap-2 sm:gap-3 group">
-                        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full overflow-hidden border-2 border-border group-hover:border-primary transition duration-300 flex-shrink-0">
-                            <img src="/img/logo.jpg" alt="Logo" className="h-full w-full object-cover" />
-                        </div>
+                        
                         <span className="text-lg sm:text-xl font-bold tracking-tight text-foreground truncate">Estaca Bay</span>
                     </Link>
 

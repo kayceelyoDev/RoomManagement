@@ -1,25 +1,14 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { 
-    Calendar, 
-    LogOut, 
-    Bell, 
-    Clock, 
-    CheckCircle, 
-    XCircle, 
-    BedDouble, 
-    CreditCard, 
-    Sparkles, 
-    ArrowLeft,
-    Trash2,
-    AlertTriangle,
-    Info,
-    Mail,
-    User,
+    Calendar, LogOut, Bell, Clock, CheckCircle, XCircle, 
+    BedDouble, CreditCard, Sparkles, ArrowLeft, Trash2, 
+    AlertTriangle, Info, Mail, Sun, Moon, ClipboardList,
     ChevronRight
 } from 'lucide-react';
-import { format, parseISO, formatDistanceToNow } from 'date-fns'; 
+import { format, parseISO, formatDistanceToNow, isFuture } from 'date-fns'; 
 import { logout } from '@/routes'; 
 import guest from '@/routes/guest';
+import { useState, useEffect } from 'react';
 
 // --- Types ---
 interface RoomCategory {
@@ -59,6 +48,7 @@ interface Notification {
     type: 'warning' | 'success' | 'info';
     title: string;
     message: string;
+    created_at?: string; 
 }
 
 interface Props {
@@ -72,8 +62,35 @@ interface Props {
 }
 
 export default function GuestReservationPage({ reservations, notifications, user }: Props) {
+    // --- THEME STATE ---
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
-    // --- Helpers ---
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            setIsDarkMode(true);
+            document.documentElement.classList.add('dark');
+        } else {
+            setIsDarkMode(false);
+            document.documentElement.classList.remove('dark');
+        }
+    }, []);
+
+    const toggleTheme = () => {
+        if (isDarkMode) {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+            setIsDarkMode(false);
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+            setIsDarkMode(true);
+        }
+    };
+
+    // --- HELPERS ---
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
@@ -96,38 +113,49 @@ export default function GuestReservationPage({ reservations, notifications, user
         }
     };
 
-    // Semantic Status Styling
     const getStatusConfig = (status: string) => {
         switch (status.toLowerCase()) {
             case 'confirmed': 
                 return { 
                     style: 'bg-primary/10 text-primary border-primary/20', 
-                    icon: <CheckCircle size={14} /> 
+                    icon: <CheckCircle size={14} />,
+                    label: 'Confirmed'
                 };
             case 'pending': 
                 return { 
-                    style: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:text-yellow-400', 
-                    icon: <Clock size={14} /> 
+                    style: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:text-yellow-400 dark:border-yellow-400/20', 
+                    icon: <Clock size={14} />,
+                    label: 'Pending Approval'
                 };
             case 'cancelled': 
                 return { 
                     style: 'bg-destructive/10 text-destructive border-destructive/20', 
-                    icon: <XCircle size={14} /> 
+                    icon: <XCircle size={14} />,
+                    label: 'Cancelled'
                 };
             case 'checked-in': 
+            case 'checked_in':
                 return { 
                     style: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400', 
-                    icon: <Sparkles size={14} /> 
+                    icon: <Sparkles size={14} />,
+                    label: 'Checked In'
+                };
+            case 'checked-out':
+            case 'checked_out':
+                return {
+                    style: 'bg-gray-500/10 text-gray-600 border-gray-500/20 dark:text-gray-400',
+                    icon: <LogOut size={14} />,
+                    label: 'Completed'
                 };
             default: 
                 return { 
                     style: 'bg-muted text-muted-foreground border-border', 
-                    icon: <Clock size={14} /> 
+                    icon: <Clock size={14} />,
+                    label: status
                 };
         }
     };
 
-    // --- Action Handlers ---
     const handleCancel = (id: number) => {
         if (confirm('Are you sure you want to cancel this reservation? This action cannot be undone.')) {
             router.post(`/reservation/cancel/${id}`, {}, {
@@ -137,12 +165,14 @@ export default function GuestReservationPage({ reservations, notifications, user
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-secondary selection:text-secondary-foreground transition-colors duration-300">
+        <div className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300">
             <Head title="My Reservations" />
 
             {/* --- NAVIGATION --- */}
             <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border transition-all">
                 <div className="px-6 h-16 flex items-center justify-between max-w-7xl mx-auto">
+                    
+                    {/* Back Button */}
                     <Link href={guest.guestpage.url()} className="flex items-center gap-2 group text-muted-foreground hover:text-primary transition-colors">
                         <div className="p-2 rounded-full bg-muted group-hover:bg-primary/10 transition-colors">
                             <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
@@ -150,29 +180,37 @@ export default function GuestReservationPage({ reservations, notifications, user
                         <span className="text-sm font-bold uppercase tracking-wider hidden sm:block">Back to Home</span>
                     </Link>
                     
-                    <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full overflow-hidden border border-border">
-                            <img src="/img/logo.jpg" alt="Logo" className="h-full w-full object-cover" />
-                        </div>
-                        <span className="text-lg font-bold tracking-tight">Estaca Bay</span>
+                    {/* Right Side Actions */}
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={toggleTheme} 
+                            className="p-2 rounded-full text-muted-foreground hover:text-primary hover:bg-secondary/20 transition-all focus:outline-none"
+                            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                        >
+                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
+                        
+                        <div className="h-6 w-px bg-border hidden sm:block"></div>
+                        
+                        <span className="text-lg font-serif font-bold tracking-tight text-foreground hidden sm:block">Estaca Bay</span>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-10">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
                     
                     {/* --- LEFT SIDEBAR (Profile & Notifications) --- */}
-                    <div className="lg:col-span-4 space-y-8">
+                    <div className="lg:col-span-4 space-y-6">
                         
                         {/* Profile Card */}
                         <div className="bg-card rounded-3xl shadow-sm border border-border overflow-hidden relative group">
-                            {/* Decorative Background */}
-                            <div className="absolute top-0 left-0 w-full h-28 bg-gradient-to-br from-primary/20 to-secondary/20" />
+                            {/* Decorative Header Background */}
+                            <div className="absolute top-0 left-0 w-full h-32 bg-[#2C3930] dark:bg-[#1a221d]" />
                             
-                            <div className="relative z-10 flex flex-col items-center text-center mt-12 px-6 pb-8">
-                                <div className="w-24 h-24 bg-card rounded-full p-1.5 shadow-lg mb-4">
-                                    <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-primary text-3xl font-serif font-bold">
+                            <div className="relative z-10 flex flex-col items-center text-center mt-16 px-6 pb-8">
+                                <div className="w-24 h-24 bg-card rounded-full p-1.5 shadow-lg mb-4 ring-4 ring-card">
+                                    <div className="w-full h-full bg-[#D8E983] text-[#2C3930] rounded-full flex items-center justify-center text-3xl font-serif font-bold uppercase">
                                         {user.name.charAt(0)}
                                     </div>
                                 </div>
@@ -203,15 +241,16 @@ export default function GuestReservationPage({ reservations, notifications, user
                         <div className="bg-card rounded-3xl shadow-sm border border-border overflow-hidden">
                             <div className="p-5 border-b border-border flex items-center gap-2 bg-muted/30">
                                 <Bell size={18} className="text-primary" />
-                                <h3 className="font-bold text-foreground text-sm uppercase tracking-wide">Notifications</h3>
+                                <h3 className="font-bold text-sm uppercase tracking-wide text-foreground">Notifications</h3>
                             </div>
                             
                             <div className="divide-y divide-border">
                                 {notifications.length > 0 ? (
                                     notifications.map((notif) => (
                                         <div key={notif.id} className="p-5 flex gap-4 hover:bg-muted/30 transition-colors">
-                                            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${
-                                                notif.type === 'warning' ? 'bg-yellow-500/10 text-yellow-600' :
+                                            {/* Icon Indicator */}
+                                            <div className={`mt-1 p-2 rounded-full flex-shrink-0 h-fit ${
+                                                notif.type === 'warning' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
                                                 notif.type === 'success' ? 'bg-primary/10 text-primary' :
                                                 'bg-blue-500/10 text-blue-500'
                                             }`}>
@@ -219,14 +258,21 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                 {notif.type === 'success' && <CheckCircle size={16} />}
                                                 {notif.type === 'info' && <Info size={16} />}
                                             </div>
+                                            
+                                            {/* Content */}
                                             <div>
-                                                <h4 className="text-sm font-bold text-foreground">{notif.title}</h4>
-                                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{notif.message}</p>
+                                                <h4 className="text-sm font-bold text-foreground mb-1">{notif.title}</h4>
+                                                <p className="text-xs text-muted-foreground leading-relaxed">{notif.message}</p>
+                                                {notif.created_at && (
+                                                    <span className="text-[10px] text-muted-foreground/50 mt-2 block">
+                                                        {getRelativeTime(notif.created_at)}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="py-10 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
+                                    <div className="py-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
                                         <div className="p-3 bg-muted rounded-full opacity-50"><Bell size={20} /></div>
                                         <p>You're all caught up!</p>
                                     </div>
@@ -239,10 +285,10 @@ export default function GuestReservationPage({ reservations, notifications, user
                     <div className="lg:col-span-8">
                         <div className="flex items-end justify-between mb-8">
                             <div>
-                                <h1 className="text-3xl font-bold text-foreground tracking-tight">My Reservations</h1>
+                                <h1 className="text-3xl font-serif font-bold text-foreground tracking-tight">My Reservations</h1>
                                 <p className="text-muted-foreground mt-1">Manage your upcoming and past stays.</p>
                             </div>
-                            <span className="bg-primary/10 text-primary border border-primary/20 px-4 py-1.5 rounded-full text-xs text-center font-bold uppercase tracking-wider">
+                            <span className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs text-center font-bold uppercase tracking-wider border border-primary/20">
                                 {reservations.length} Bookings
                             </span>
                         </div>
@@ -251,6 +297,7 @@ export default function GuestReservationPage({ reservations, notifications, user
                             {reservations.length > 0 ? (
                                 reservations.map((res) => {
                                     const statusConfig = getStatusConfig(res.status);
+                                    
                                     return (
                                         <div key={res.id} className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 group">
                                             <div className="flex flex-col md:flex-row">
@@ -262,15 +309,14 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                         alt={res.room.room_name} 
                                                         className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
                                                     />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent md:hidden" />
                                                     
                                                     {/* Floating Status Badge */}
-                                                    <div className="absolute top-4 left-4 backdrop-blur-md bg-card/80 dark:bg-card/90 rounded-full pl-1 pr-3 py-1 flex items-center gap-2 border border-border shadow-sm">
+                                                    <div className="absolute top-4 left-4 backdrop-blur-md bg-card/90 rounded-full pl-1 pr-3 py-1 flex items-center gap-2 shadow-sm border border-border">
                                                         <div className={`p-1 rounded-full ${statusConfig.style.split(' ')[0]} ${statusConfig.style.split(' ')[1]}`}>
                                                             {statusConfig.icon}
                                                         </div>
                                                         <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                                                            {res.status}
+                                                            {statusConfig.label}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -291,7 +337,7 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                     </div>
 
                                                     {/* Dates Grid */}
-                                                    <div className="flex gap-4 p-4 bg-muted/40 rounded-2xl border border-border mb-6">
+                                                    <div className="flex gap-4 p-4 bg-muted/30 rounded-2xl border border-border mb-6">
                                                         <div className="flex-1">
                                                             <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Check-in</span>
                                                             <div className="font-semibold text-foreground text-sm flex items-center gap-2">
@@ -304,7 +350,7 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                         <div className="flex-1">
                                                             <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Check-out</span>
                                                             <div className="font-semibold text-foreground text-sm flex items-center gap-2">
-                                                                <Calendar size={14} className="text-primary" />
+                                                                <LogOut size={14} className="text-muted-foreground" />
                                                                 {format(parseISO(res.check_out_date), 'MMM dd, yyyy')}
                                                             </div>
                                                             <span className="text-xs text-muted-foreground pl-6">{format(parseISO(res.check_out_date), 'h:mm a')}</span>
@@ -316,8 +362,8 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                         <div className="flex flex-wrap gap-2 mb-6">
                                                             {res.services.map(svc => (
                                                                 <span key={svc.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary/10 text-secondary-foreground text-xs rounded-lg font-medium border border-secondary/20">
-                                                                    <Sparkles size={10} />
-                                                                    <span><span className="font-bold">{svc.pivot.quantity}x</span> {svc.services_name}</span>
+                                                                        <Sparkles size={10} />
+                                                                        <span><span className="font-bold">{svc.pivot.quantity}x</span> {svc.services_name}</span>
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -333,10 +379,9 @@ export default function GuestReservationPage({ reservations, notifications, user
                                                         {['pending', 'confirmed'].includes(res.status.toLowerCase()) && (
                                                             <button 
                                                                 onClick={() => handleCancel(res.id)}
-                                                                className="flex items-center gap-1.5 px-4 py-2 bg-destructive/10 text-destructive rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-destructive hover:text-white transition-all duration-300"
+                                                                className="flex items-center gap-1.5 px-4 py-2 bg-destructive/10 text-destructive rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-destructive hover:text-white transition-all duration-300 border border-destructive/20 hover:border-destructive"
                                                             >
-                                                                <Trash2 size={14} />
-                                                                Cancel
+                                                                <Trash2 size={14} /> Cancel
                                                             </button>
                                                         )}
                                                     </div>

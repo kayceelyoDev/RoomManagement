@@ -6,7 +6,6 @@ use App\Enum\ReservationEnum;
 use App\Models\Reservation;
 use App\Models\Rooms;
 use App\Models\Transaction;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -15,8 +14,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // LAZY LOADING: Wrap everything in closures (fn)
-        // This ensures queries ONLY run when the frontend specifically asks for them via partial reload.
+        // LAZY LOADING: Ensures queries only run when specifically requested via partial reload
         return Inertia::render('dashboard', [
             'stats' => fn() => $this->getOperationalStats(),
             'roomStatus' => fn() => $this->getRoomStatus(),
@@ -25,9 +23,18 @@ class DashboardController extends Controller
         ]);
     }
 
-    // ... (Keep your existing analytics() method here) ...
+    public function analytics()
+    {
+        return Inertia::render('AnalyticsPage', [
+            'revenueData' => fn() => $this->getRevenueData(),
+            'categoryPerformance' => fn() => $this->getCategoryPerformance(),
+            'topRooms' => fn() => $this->getTopRooms(),
+            'reservationStatus' => fn() => $this->getReservationStatus(),
+            'avgStay' => fn() => $this->getAvgStay(),
+        ]);
+    }
 
-    // --- PRIVATE HELPER METHODS (Optimized Queries) ---
+    // --- PRIVATE HELPER METHODS (PostgreSQL Compatible) ---
 
     private function getOperationalStats()
     {
@@ -77,8 +84,9 @@ class DashboardController extends Controller
 
     private function getBookingVolume()
     {
+        // FIXED: PostgreSQL uses CAST(col AS DATE) instead of DATE(col)
         return Reservation::select(
-            DB::raw('DATE(check_in_date) as date'),
+            DB::raw('CAST(check_in_date AS DATE) as date'),
             DB::raw('COUNT(*) as count')
         )
             ->whereDate('check_in_date', '>=', now())
@@ -86,22 +94,6 @@ class DashboardController extends Controller
             ->groupBy('date')
             ->get();
     }
-
-    public function analytics()
-    {
-        // We use closures (fn() =>) here. 
-        // These queries will NOT run unless the frontend specifically requests 'revenueData', etc.
-        return Inertia::render('AnalyticsPage', [
-            'revenueData' => fn() => $this->getRevenueData(),
-            'categoryPerformance' => fn() => $this->getCategoryPerformance(),
-            'topRooms' => fn() => $this->getTopRooms(),
-            'reservationStatus' => fn() => $this->getReservationStatus(),
-            'avgStay' => fn() => $this->getAvgStay(),
-            // Static data (like page title) doesn't need a closure
-        ]);
-    }
-
-    // --- PRIVATE HELPER METHODS FOR EFFICIENCY ---
 
     private function getRevenueData()
     {
@@ -116,9 +108,10 @@ class DashboardController extends Controller
             ? round((($currentRevenue - $previousRevenue) / $previousRevenue) * 100, 1)
             : ($currentRevenue > 0 ? 100 : 0);
 
+        // FIXED: PostgreSQL uses CAST(col AS DATE)
         $revenueTrend = Transaction::whereBetween('created_at', [$thirtyDaysAgo, $now])
             ->select(
-                DB::raw('DATE(created_at) as date'),
+                DB::raw('CAST(created_at AS DATE) as date'),
                 DB::raw('SUM(payment_amount) as revenue'),
                 DB::raw('COUNT(*) as bookings')
             )
@@ -155,7 +148,8 @@ class DashboardController extends Controller
                 'rooms.room_name',
                 DB::raw('COUNT(reservations.id) as bookings'),
                 DB::raw('SUM(reservations.reservation_amount) as earned'),
-                DB::raw('AVG(DATEDIFF(reservations.check_out_date, reservations.check_in_date)) as avg_stay')
+             
+                DB::raw('AVG(CAST(reservations.check_out_date AS DATE) - CAST(reservations.check_in_date AS DATE)) as avg_stay')
             )
             ->where('reservations.status', '!=', ReservationEnum::Cancelled)
             ->groupBy('rooms.id', 'rooms.room_name')
@@ -173,8 +167,9 @@ class DashboardController extends Controller
 
     private function getAvgStay()
     {
+       
         $val = Reservation::where('status', ReservationEnum::CheckedOut)
-            ->select(DB::raw('AVG(DATEDIFF(check_out_date, check_in_date)) as days'))
+            ->select(DB::raw('AVG(CAST(check_out_date AS DATE) - CAST(check_in_date AS DATE)) as days'))
             ->value('days');
 
         return round($val ?? 0, 1);
