@@ -17,7 +17,7 @@ interface RoomCategory {
 }
 
 interface Props {
-    categories: RoomCategory[]; // Received from Controller
+    categories: RoomCategory[];
 }
 
 // --- Reusable Modal Component ---
@@ -38,7 +38,6 @@ function CategoryFormModal({
         room_capacity: '',
     });
 
-    // Reset form when modal opens or switches mode
     useEffect(() => {
         if (isOpen) {
             clearErrors();
@@ -56,7 +55,6 @@ function CategoryFormModal({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        
         if (isEditMode && categoryToEdit) {
             put(roomcategoryRoute.update.url(categoryToEdit.id), {
                 onSuccess: () => { onClose(); reset(); }
@@ -71,64 +69,65 @@ function CategoryFormModal({
     return (
         <Transition show={isOpen} as={Fragment}>
             <Dialog as="div" className="relative z-50" onClose={onClose}>
-                <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-                </Transition.Child>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" />
 
                 <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
-                        <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
-                            <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-card p-6 shadow-xl transition-all border border-border">
-                                <div className="flex items-center justify-between mb-5">
-                                    <Dialog.Title as="h3" className="text-lg font-bold text-gray-900 dark:text-white">
-                                        {isEditMode ? 'Edit Category' : 'Add New Category'}
+                        <Transition.Child 
+                            as={Fragment} 
+                            enter="ease-out duration-300" 
+                            enterFrom="opacity-0 scale-95" 
+                            enterTo="opacity-100 scale-100" 
+                            leave="ease-in duration-200" 
+                            leaveFrom="opacity-100 scale-100" 
+                            leaveTo="opacity-0 scale-95"
+                        >
+                            <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-card p-6 shadow-2xl transition-all border border-border">
+                                <div className="flex items-center justify-between mb-6">
+                                    <Dialog.Title as="h3" className="text-xl font-serif font-bold text-foreground">
+                                        {isEditMode ? 'Edit Category' : 'New Category'}
                                     </Dialog.Title>
-                                    <button onClick={onClose} className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
-                                        <X className="size-5" />
+                                    <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
+                                        <X className="size-5 text-muted-foreground" />
                                     </button>
                                 </div>
 
-                                <form onSubmit={submit} className="space-y-4">
-                                    {/* Name */}
+                                <form onSubmit={submit} className="space-y-5">
                                     <div className="space-y-2">
-                                        <Label htmlFor="room_category" className="flex items-center gap-2 dark:text-gray-200">
-                                            <Layers className="size-4" /> Category Name
+                                        <Label htmlFor="room_category" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                                            Category Name
                                         </Label>
                                         <Input
                                             id="room_category"
                                             value={data.room_category}
                                             onChange={(e) => setData('room_category', e.target.value)}
                                             placeholder="e.g. Deluxe Suite"
-                                            className="bg-background border-border text-foreground"
+                                            className="bg-background border-border h-11 focus:ring-primary/20"
                                         />
-                                        {errors.room_category && <p className="text-sm text-red-500">{errors.room_category}</p>}
+                                        {errors.room_category && <p className="text-xs font-bold text-destructive mt-1">{errors.room_category}</p>}
                                     </div>
 
-                                    {/* Price & Capacity Grid */}
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="price" className="flex items-center gap-2 dark:text-gray-200">
-                                                <CircleDollarSign className="size-4" /> Price
+                                            <Label htmlFor="price" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                                                Nightly Rate
                                             </Label>
                                             <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                                    <span className="text-gray-500 sm:text-sm">₱</span>
-                                                </div>
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₱</span>
                                                 <Input
                                                     id="price"
                                                     type="number"
                                                     value={data.price}
                                                     onChange={(e) => setData('price', e.target.value)}
-                                                    placeholder="0.00"
-                                                    className="pl-7 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                                    className="pl-7 bg-background border-border h-11"
                                                 />
                                             </div>
-                                            {errors.price && <p className="text-sm text-red-500">{errors.price}</p>}
+                                            {errors.price && <p className="text-xs font-bold text-destructive mt-1">{errors.price}</p>}
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="room_capacity" className="flex items-center gap-2 dark:text-gray-200">
-                                                <Users className="size-4" /> Capacity
+                                            <Label htmlFor="room_capacity" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                                                Capacity
                                             </Label>
                                             <Input
                                                 id="room_capacity"
@@ -136,17 +135,17 @@ function CategoryFormModal({
                                                 value={data.room_capacity}
                                                 onChange={(e) => setData('room_capacity', e.target.value)}
                                                 placeholder="Max pax"
-                                                className="bg-background border-border"
+                                                className="bg-background border-border h-11"
                                             />
-                                            {errors.room_capacity && <p className="text-sm text-red-500">{errors.room_capacity}</p>}
+                                            {errors.room_capacity && <p className="text-xs font-bold text-destructive mt-1">{errors.room_capacity}</p>}
                                         </div>
                                     </div>
 
-                                    <div className="mt-6 flex justify-end gap-3">
-                                        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                                        <Button type="submit" disabled={processing} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                                            <Save className="size-4 mr-2" />
-                                            {processing ? 'Saving...' : 'Save'}
+                                    <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3">
+                                        <Button type="button" variant="ghost" onClick={onClose} className="w-full sm:w-auto text-muted-foreground order-2 sm:order-1">Cancel</Button>
+                                        <Button type="submit" disabled={processing} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/10 order-1 sm:order-2">
+                                            {processing ? <Loader2 className="animate-spin size-4 mr-2" /> : <Save className="size-4 mr-2" />}
+                                            {isEditMode ? 'Update Category' : 'Save Category'}
                                         </Button>
                                     </div>
                                 </form>
@@ -160,7 +159,7 @@ function CategoryFormModal({
 }
 
 // --- Main Page Component ---
-export default function RoomCategoryPage({ categories = [] }: Props) { // Default to empty array
+export default function RoomCategoryPage({ categories = [] }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<RoomCategory | null>(null);
 
@@ -175,7 +174,7 @@ export default function RoomCategoryPage({ categories = [] }: Props) { // Defaul
     };
 
     const deleteCategory = (id: number) => {
-        if (confirm('Are you sure you want to delete this category? All associated rooms might be affected.')) {
+        if (confirm('Are you sure you want to delete this category? All associated rooms will be affected.')) {
             router.delete(roomcategoryRoute.destroy.url(id));
         }
     };
@@ -184,63 +183,78 @@ export default function RoomCategoryPage({ categories = [] }: Props) { // Defaul
         <AppLayout breadcrumbs={[{ title: 'Room Categories', href: roomcategoryRoute.index.url() }]}>
             <Head title="Room Categories" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div className="min-h-screen bg-background py-6 md:py-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     
-                    {/* Header */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {/* Responsive Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+                        <div className="w-full sm:w-auto">
+                            <h2 className="text-3xl font-serif font-bold text-foreground">
                                 Room Categories
                             </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="mt-1 text-sm text-muted-foreground">
                                 Define types of rooms, their prices, and capacities.
                             </p>
                         </div>
-                        <Button onClick={openAddModal} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Button 
+                            onClick={openAddModal} 
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-11"
+                        >
                             <Plus className="size-4 mr-2" /> Add Category
                         </Button>
                     </div>
 
-                    {/* Categories List */}
-                    <div className="bg-card overflow-hidden shadow-sm sm:rounded-lg border border-border">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead className="bg-muted/50">
+                    {/* Scrollable Table Card */}
+                    <div className="bg-card overflow-hidden shadow-xl rounded-2xl border border-border transition-all">
+                        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/10">
+                            <table className="min-w-[600px] w-full divide-y divide-border/50">
+                                <thead className="bg-muted/30">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category Name</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Capacity</th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Category Name</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nightly Price</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Max Capacity</th>
+                                        <th className="px-6 py-4 text-right text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-card divide-y divide-border">
+                                <tbody className="divide-y divide-border/30">
                                     {categories.length > 0 ? (
                                         categories.map((cat) => (
-                                            <tr key={cat.id} className="hover:bg-muted/50 transition-colors">
+                                            <tr key={cat.id} className="group hover:bg-muted/20 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="shrink-0 h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
+                                                        <div className="h-9 w-9 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
                                                             <Layers className="size-4" />
                                                         </div>
-                                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{cat.room_category}</span>
+                                                        <span className="text-sm font-bold text-foreground">{cat.room_category}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-bold">
-                                                    ₱{Number(cat.price).toLocaleString()}
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className="text-sm font-serif font-bold text-primary">
+                                                        ₱{Number(cat.price).toLocaleString()}
+                                                    </span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Users className="size-3.5 text-gray-400" />
-                                                        {cat.room_capacity} Person(s)
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                                                    <div className="flex items-center gap-2">
+                                                        <Users className="size-3.5 text-primary/60" />
+                                                        <span className="font-medium">{cat.room_capacity} Person(s)</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEditModal(cat)} className="h-8 w-8 text-primary hover:text-primary/80">
+                                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                    <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            onClick={() => openEditModal(cat)} 
+                                                            className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                                        >
                                                             <Edit className="size-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => deleteCategory(cat.id)} className="h-8 w-8 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            onClick={() => deleteCategory(cat.id)} 
+                                                            className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                                        >
                                                             <Trash2 className="size-4" />
                                                         </Button>
                                                     </div>
@@ -249,8 +263,11 @@ export default function RoomCategoryPage({ categories = [] }: Props) { // Defaul
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={4} className="px-6 py-10 text-center text-gray-500 dark:text-gray-400">
-                                                No categories found.
+                                            <td colSpan={4} className="px-6 py-20 text-center">
+                                                <div className="flex flex-col items-center justify-center text-muted-foreground opacity-30">
+                                                    <Layers size={48} className="mb-4" />
+                                                    <p className="text-sm font-medium tracking-widest uppercase">No room categories found</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     )}
@@ -267,5 +284,14 @@ export default function RoomCategoryPage({ categories = [] }: Props) { // Defaul
                 categoryToEdit={editingCategory} 
             />
         </AppLayout>
+    );
+}
+
+// Helper icon for processing
+function Loader2({ className, size }: { className?: string; size?: number }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size || 24} height={size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`}>
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        </svg>
     );
 }

@@ -1,6 +1,8 @@
 <?php
 
 use App\Enum\roles;
+use App\Http\Controllers\CheckInController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\emailVerificationController;
 use App\Http\Controllers\GuestPage;
 use App\Http\Controllers\ReservationController;
@@ -14,14 +16,11 @@ use Laravel\Fortify\Features;
 Route::get('/', [GuestPage::class, 'getRooms'])->name('home');
 
 Route::middleware(['auth', 'verified', 'role'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
-
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('rooms', RoomsController::class);
-    
     Route::resource('roomcategory', RoomCategoryController::class);
     Route::resource('services', ServicesController::class);
+    Route::resource('checkin', CheckInController::class);
 });
 
 ///email verification routres///

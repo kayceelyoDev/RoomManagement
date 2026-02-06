@@ -288,6 +288,8 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                     <option value="pending">Pending</option>
                                                     <option value="confirmed">Confirmed</option>
                                                     <option value="cancelled">Cancelled</option>
+                                                    <option value="checked_in">Checked In</option>
+                                                    <option value="checked_out">Checked Out</option>
                                                 </select>
                                                 <ErrorMessage message={errors.status} />
                                             </div>

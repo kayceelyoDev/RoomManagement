@@ -32,7 +32,8 @@ class GuestPage extends Controller
                     ->select('id', 'room_id', 'check_in_date', 'check_out_date', 'status')
             ])
             ->where('status', '!=', 'maintenance')
-            ->get();
+            ->get()
+            ->take(6);
 
         return Inertia::render('welcome', [
             'rooms' => $rooms,

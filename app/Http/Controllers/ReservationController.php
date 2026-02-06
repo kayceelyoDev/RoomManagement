@@ -10,6 +10,7 @@ use App\Models\Rooms;
 use App\Models\Services;
 use App\Services\ReservationServices;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -23,52 +24,65 @@ class ReservationController extends Controller
      */
     public function index(Request $request)
     {
-        // 1. Security Redirect
         if (Gate::allows('acces-guest')) {
             return redirect()->route('guest.guestpage');
         }
 
         $search = $request->input('search');
+        $today = Carbon::today();
 
-        // 2. Fetch Reservations List (Main Table)
-        $reservations = Reservation::with([
+        // 1. Fetch Reservations List
+        $reservationsQuery = Reservation::with([
             'room:id,room_name,room_categories_id',
             'services:id,services_name'
-        ])
-            ->when($search, function ($query, $search) {
+        ]);
+
+        // Apply search
+        if ($search) {
+            $reservationsQuery->where(function ($query) use ($search) {
                 $query->where('guest_name', 'like', "%{$search}%")
                     ->orWhere('contact_number', 'like', "%{$search}%")
-                    ->orWhere('status', 'like', "%{$search}%")
-                    ->orWhereHas('room', function ($q) use ($search) {
-                        $q->where('room_name', 'like', "%{$search}%");
-                    });
-            })
-            ->latest()
-            ->get();
+                    ->orWhereHas('room', fn($q) => $q->where('room_name', 'like', "%{$search}%"));
+            });
+        }
 
-        // 3. Fetch Rooms for Calendar/Modal
+        $reservations = $reservationsQuery->latest()->get();
+
+        // 2. ANALYTICS CALCULATIONS (Independent of search for global overview)
+        $allReservations = Reservation::whereIn('status', [
+            ReservationEnum::Pending,
+            ReservationEnum::Confirmed,
+            ReservationEnum::CheckedIn
+        ])->get();
+
+        $stats = [
+            'total_revenue' => $allReservations->where('status', '!=', ReservationEnum::Pending)->sum('reservation_amount'),
+            'arrivals_today' => Reservation::whereDate('check_in_date', $today)
+                ->where('status', '!=', ReservationEnum::Cancelled)
+                ->count(),
+            'departures_today' => Reservation::whereDate('check_out_date', $today)
+                ->where('status', '!=', ReservationEnum::Cancelled)
+                ->count(),
+            'pending_count' => $allReservations->where('status', ReservationEnum::Pending)->count(),
+        ];
+
+        // 3. Fetch Rooms & Services (Keep as is)
         $rooms = Rooms::select('id', 'room_name', 'room_categories_id', 'max_extra_person', 'status')
             ->with([
-                'roomCategory:id,room_category,price,room_capacity',
-                'reservations' => function ($query) {
-                    $query->whereIn('status', [
-                        ReservationEnum::Pending,
-                        ReservationEnum::Confirmed,
-                        ReservationEnum::CheckedIn
-                    ])
-                        ->where('check_out_date', '>=', now()) // Only future/current bookings
-                        ->select('id', 'room_id', 'check_in_date', 'check_out_date', 'status');
+                'roomCategory',
+                'reservations' => function ($q) {
+                    $q->whereIn('status', [ReservationEnum::Pending, ReservationEnum::Confirmed, ReservationEnum::CheckedIn])
+                        ->where('check_out_date', '>=', now());
                 }
-            ])
-            ->get();
+            ])->get();
 
-        // 4. Fetch Services (Lean)
         $services = Services::select('id', 'services_name', 'services_price')->get();
 
         return Inertia::render('reservations/ReservationPage', [
             'reservations' => $reservations,
             'rooms' => $rooms,
             'services' => $services,
+            'stats' => $stats, // Pass the new stats prop
             'filters' => ['search' => $search]
         ]);
     }

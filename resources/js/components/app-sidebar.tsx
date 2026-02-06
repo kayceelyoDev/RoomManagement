@@ -13,11 +13,12 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Bed, BookOpen, Folder, icons, LayoutGrid, NotebookPen } from 'lucide-react';
+import { Bed, BookOpen, Folder, icons, LayoutGrid, NotebookPen, TicketCheck } from 'lucide-react';
 import AppLogo from './app-logo';
 import { route } from 'ziggy-js';
 import rooms from '@/routes/rooms';
 import reservation from '@/routes/reservation';
+import checkin from '@/routes/checkin';
 
 const mainNavItems: NavItem[] = [
     {
@@ -34,6 +35,11 @@ const mainNavItems: NavItem[] = [
         title:'Reservation',
         href:reservation.index.url(),
         icon: NotebookPen,
+    },
+    {
+        title:'Check-in',
+        href:checkin.index.url(),
+        icon: TicketCheck,
     }
 ];
 
