@@ -61,6 +61,14 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
+        Gate::define('manage-reservations', function (User $user) {
+            return in_array($user->role, [
+                roles::ADMIN,
+                roles::SUPPERADMIN,
+                roles::STAFF,
+            ]);
+        });
+
        Gate::define('manage-user', function (User $user) {
            
             $userRole = $user->role instanceof roles ? $user->role->value : $user->role;

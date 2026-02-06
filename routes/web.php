@@ -19,6 +19,7 @@ Route::get('/', [GuestPage::class, 'getRooms'])->name('home');
 
 Route::middleware(['auth', 'verified', 'role'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('analytics', [DashboardController::class, 'analytics'])->name('analytics');
     Route::resource('rooms', RoomsController::class);
     Route::resource('roomcategory', RoomCategoryController::class);
     Route::resource('services', ServicesController::class);

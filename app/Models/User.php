@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enum\roles;
 use App\Notifications\CustomVerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -13,26 +12,16 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role'
+        'role',
+        'email_verified_at',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'two_factor_secret',
@@ -40,11 +29,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -58,25 +42,42 @@ class User extends Authenticatable implements MustVerifyEmail
     public function sendEmailVerificationNotification(){
         $this->notify(new CustomVerifyEmail());
     }
+
+    // --- RELATIONSHIPS (FIXED) ---
+
+    // Changed from belongsToMany to hasMany
+    // This assumes the 'rooms' table has a 'user_id' column (creator/manager)
     public function rooms(){
-        return $this->belongsToMany(Rooms::class);
+        return $this->hasMany(Rooms::class);
     }
+    
+    // Changed from belongsToMany to hasMany
+    // This assumes 'reservations' table has 'user_id'
     public function reservations(){
-        return $this->belongsToMany(Reservation::class);
+        return $this->hasMany(Reservation::class);
     }
 
+    // Changed from belongsToMany to hasMany
     public function checkins(){
-        return $this->belongsToMany(CheckIn::class);
+        return $this->hasMany(CheckIn::class);
     }
 
+    // Changed from belongsToMany to hasMany
     public function checkouts(){
-        return $this->belongsToMany(Checkout::class);
+        return $this->hasMany(Checkout::class);
     }
+
+    // Correctly set as hasMany
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    // --- ROLE HELPERS ---
 
     public function isAdmin(){
         return $this->role === roles::ADMIN;
     }
-
 
     public function isStaff(){
         return $this->role === roles::STAFF;

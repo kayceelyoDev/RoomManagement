@@ -22,71 +22,87 @@ class ReservationController extends Controller
     /**
      * Display the Admin Reservation Dashboard.
      */
-    public function index(Request $request)
+  public function index(Request $request)
     {
         if (Gate::allows('acces-guest')) {
             return redirect()->route('guest.guestpage');
         }
 
-        $search = $request->input('search');
-        $today = Carbon::today();
-
-        // 1. Fetch Reservations List
-        $reservationsQuery = Reservation::with([
-            'room:id,room_name,room_categories_id',
-            'services:id,services_name'
-        ]);
-
-        // Apply search
-        if ($search) {
-            $reservationsQuery->where(function ($query) use ($search) {
-                $query->where('guest_name', 'like', "%{$search}%")
-                    ->orWhere('contact_number', 'like', "%{$search}%")
-                    ->orWhereHas('room', fn($q) => $q->where('room_name', 'like', "%{$search}%"));
-            });
-        }
-
-        $reservations = $reservationsQuery->latest()->get();
-
-        // 2. ANALYTICS CALCULATIONS (Independent of search for global overview)
-        $allReservations = Reservation::whereIn('status', [
-            ReservationEnum::Pending,
-            ReservationEnum::Confirmed,
-            ReservationEnum::CheckedIn
-        ])->get();
-
-        $stats = [
-            'total_revenue' => $allReservations->where('status', '!=', ReservationEnum::Pending)->sum('reservation_amount'),
-            'arrivals_today' => Reservation::whereDate('check_in_date', $today)
-                ->where('status', '!=', ReservationEnum::Cancelled)
-                ->count(),
-            'departures_today' => Reservation::whereDate('check_out_date', $today)
-                ->where('status', '!=', ReservationEnum::Cancelled)
-                ->count(),
-            'pending_count' => $allReservations->where('status', ReservationEnum::Pending)->count(),
-        ];
-
-        // 3. Fetch Rooms & Services (Keep as is)
-        $rooms = Rooms::select('id', 'room_name', 'room_categories_id', 'max_extra_person', 'status')
-            ->with([
-                'roomCategory',
-                'reservations' => function ($q) {
-                    $q->whereIn('status', [ReservationEnum::Pending, ReservationEnum::Confirmed, ReservationEnum::CheckedIn])
-                        ->where('check_out_date', '>=', now());
-                }
-            ])->get();
-
-        $services = Services::select('id', 'services_name', 'services_price')->get();
-
         return Inertia::render('reservations/ReservationPage', [
-            'reservations' => $reservations,
-            'rooms' => $rooms,
-            'services' => $services,
-            'stats' => $stats, // Pass the new stats prop
-            'filters' => ['search' => $search]
+            // 1. FILTERS (Lightweight, always passed)
+            'filters' => $request->only(['search']),
+
+            // 2. RESERVATION LIST (Lazy Loaded - The Heavy Lifter)
+            // Only runs if explicitly requested or on first load
+            'reservations' => fn () => $this->getReservations($request),
+
+            // 3. STATS (Lazy Loaded - For Dashboard Badges)
+            // Only runs if explicitly requested or on first load
+            'stats' => fn () => $this->getStats(),
+
+            // 4. STATIC DATA (Lazy Loaded - For Modals)
+            // These rarely change, so we don't need to re-fetch them during polling
+            'rooms' => fn () => Rooms::select('id', 'room_name', 'room_categories_id', 'max_extra_person', 'status')
+                ->with(['roomCategory'])
+                ->get(),
+                
+            'services' => fn () => Services::select('id', 'services_name', 'services_price')->get(),
         ]);
     }
 
+    // --- PRIVATE OPTIMIZED HELPERS ---
+
+    private function getReservations(Request $request)
+    {
+        $search = $request->input('search');
+
+        return Reservation::query()
+            // A. Eager Load ONLY necessary columns to reduce memory/payload
+            ->with([
+                'room:id,room_name,room_categories_id', 
+                'services:id,services_name' 
+            ])
+            // B. Efficient Search
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('guest_name', 'like', "%{$search}%")
+                      ->orWhere('contact_number', 'like', "%{$search}%")
+                      // Optimized whereHas: checking existence is faster than loading models
+                      ->orWhereHas('room', fn($subQ) => $subQ->where('room_name', 'like', "%{$search}%"));
+                });
+            })
+            ->latest() // Equivalent to orderBy('created_at', 'desc')
+            ->paginate(10) // Keep page size reasonable
+            ->withQueryString();
+    }
+
+    private function getStats()
+    {
+        $today = Carbon::today();
+
+        // C. Single Efficient Aggregate Query for Revenue & Pending
+        // This avoids fetching all records into PHP memory
+        $aggregates = Reservation::toBase()
+            ->selectRaw("sum(case when status != ? then reservation_amount else 0 end) as total_revenue", [ReservationEnum::Pending->value])
+            ->selectRaw("count(case when status = ? then 1 end) as pending_count", [ReservationEnum::Pending->value])
+            ->first();
+
+        // D. Simple Indexed Counts for Today's Activity
+        $arrivals = Reservation::whereDate('check_in_date', $today)
+            ->where('status', '!=', ReservationEnum::Cancelled->value)
+            ->count();
+
+        $departures = Reservation::whereDate('check_out_date', $today)
+            ->where('status', '!=', ReservationEnum::Cancelled->value)
+            ->count();
+
+        return [
+            'total_revenue' => (float) $aggregates->total_revenue,
+            'arrivals_today' => $arrivals,
+            'departures_today' => $departures,
+            'pending_count' => (int) $aggregates->pending_count,
+        ];
+    }
     /**
      * Store a newly created reservation.
      */

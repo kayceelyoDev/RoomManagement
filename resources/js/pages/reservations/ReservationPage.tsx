@@ -7,31 +7,18 @@ import { BreadcrumbItem } from '@/types';
 import { Room } from '@/types/Rooms';
 import { Head, Link, router } from '@inertiajs/react';
 import { 
-    CheckCircle, 
-    Clock, 
-    Edit, 
-    Search, 
-    Trash2, 
-    User, 
-    XCircle, 
-    RefreshCw, 
-    Power, 
-    PowerOff,
-    Calendar,
-    Filter,
-    FileText,
-    TrendingUp,
-    LogIn,
-    LogOut,
-    AlertCircle
+    CheckCircle, Clock, Edit, Search, Trash2, 
+    RefreshCw, Power, PowerOff, Calendar, Filter, 
+    TrendingUp, LogIn, LogOut, AlertCircle
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import AddReservation, { Service } from './modal/AddReservation';
 import UpdateReservation from './modal/UpdateReservation';
 
+// ... (Interfaces remain the same) ...
 export interface Reservation {
-    id: string; // Changed to string to support ULIDs
+    id: string;
     room_id: number;
     guest_name: string;
     contact_number: string;
@@ -51,7 +38,7 @@ export interface Reservation {
 interface Props {
     rooms: Room[];
     services: Service[];
-    reservations: Reservation[];
+    reservations: { data: Reservation[], links: any[] }; // Typing for pagination
     stats: {
         total_revenue: number;
         arrivals_today: number;
@@ -68,33 +55,32 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
     const [searchQuery, setSearchQuery] = useState(filters?.search || '');
     
     // --- AUTO-UPDATE & POLLING ---
-    const [isAutoUpdateEnabled, setIsAutoUpdateEnabled] = useState(true);
+    const [isAutoUpdateEnabled, setIsAutoUpdateEnabled] = useState(true); // Default to true for "Live" feel
     const [isPolling, setIsPolling] = useState(false);
 
-    const manualRefresh = () => {
+    // Optimized Refresh Function
+    const refreshData = useCallback(() => {
         setIsPolling(true);
         router.reload({
-            only: ['reservations', 'rooms', 'stats'],
+            // OPTIMIZATION: Only fetch dynamic data. 
+            // We DO NOT fetch 'rooms' or 'services' here as they change rarely.
+            only: ['reservations', 'stats'], 
             preserveScroll: true,
+            preserveState: true,
             onFinish: () => setIsPolling(false),
         });
-    };
+    }, []);
 
+    // Polling Effect
     useEffect(() => {
         let interval: NodeJS.Timeout;
+        
+        // Only poll if enabled AND user is not interacting with a modal
         if (isAutoUpdateEnabled && !isShowingAddModal && !isShowingUpdateModal) {
-            interval = setInterval(() => {
-                setIsPolling(true);
-                router.reload({
-                    only: ['reservations', 'rooms', 'stats'],
-                    preserveScroll: true,
-                    preserveState: true,
-                    onFinish: () => setIsPolling(false),
-                });
-            }, 5000);
+            interval = setInterval(refreshData, 5000); // 5 Seconds
         }
-        return () => { if (interval) clearInterval(interval); };
-    }, [isAutoUpdateEnabled, isShowingAddModal, isShowingUpdateModal]);
+        return () => clearInterval(interval);
+    }, [isAutoUpdateEnabled, isShowingAddModal, isShowingUpdateModal, refreshData]);
 
     // --- SEARCH LOGIC ---
     useEffect(() => {
@@ -126,9 +112,10 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
         const lowerStatus = status.toLowerCase();
         const styles = {
             confirmed: "bg-primary/10 text-primary border-primary/20",
-            pending: "bg-accent/20 text-accent-foreground border-accent/20",
+            pending: "bg-yellow-500/10 text-yellow-600 border-yellow-200",
             cancelled: "bg-destructive/10 text-destructive border-destructive/20",
-            'checked-in': "bg-blue-500/10 text-blue-600 border-blue-200",
+            'checked_in': "bg-blue-500/10 text-blue-600 border-blue-200",
+            'checked_out': "bg-gray-500/10 text-gray-600 border-gray-200",
         };
         const style = styles[lowerStatus as keyof typeof styles] || "bg-muted text-muted-foreground border-border";
         
@@ -136,7 +123,7 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${style}`}>
                 {lowerStatus === 'confirmed' && <CheckCircle className="hidden xs:block size-3" />}
                 {lowerStatus === 'pending' && <Clock className="hidden xs:block size-3" />}
-                <span className="whitespace-nowrap">{status}</span>
+                <span className="whitespace-nowrap">{status.replace('_', ' ')}</span>
             </span>
         );
     };
@@ -235,18 +222,22 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
                                         </span>
                                     </Button>
 
-                                    {!isAutoUpdateEnabled && (
-                                        <Button variant="ghost" size="icon" onClick={manualRefresh} disabled={isPolling} className="text-muted-foreground h-10 w-10 border border-transparent hover:border-border">
-                                            <RefreshCw className={`size-4 ${isPolling ? 'animate-spin' : ''}`} />
-                                        </Button>
-                                    )}
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={refreshData} 
+                                        disabled={isPolling} 
+                                        className="text-muted-foreground h-10 w-10 border border-transparent hover:border-border"
+                                    >
+                                        <RefreshCw className={`size-4 ${isPolling ? 'animate-spin' : ''}`} />
+                                    </Button>
                                 </div>
                             </div>
 
                             <div className="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
                                 {isPolling && (
                                     <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-primary animate-pulse tracking-widest">
-                                        <RefreshCw className="size-3 animate-spin" /> Syncing
+                                        <RefreshCw className="size-3 animate-spin" /> Syncing...
                                     </span>
                                 )}
                                 <Button variant="outline" size="icon" className="border-border text-muted-foreground h-10 w-10">
@@ -270,8 +261,8 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/50">
-                                    {reservations.length > 0 ? (
-                                        reservations.map((res) => (
+                                    {reservations.data.length > 0 ? (
+                                        reservations.data.map((res) => (
                                             <tr key={res.id} className="hover:bg-accent/5 transition-colors group">
                                                 <td className="px-4 md:px-6 py-4">
                                                     <div className="flex items-center gap-3">
@@ -324,7 +315,7 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
                                         <tr>
                                             <td colSpan={5} className="px-6 py-20 text-center">
                                                 <div className="flex flex-col items-center justify-center text-muted-foreground">
-                                                    <FileText size={40} className="mb-4 opacity-20" />
+                                                    <div className="mb-4 opacity-20"><Calendar size={40} /></div>
                                                     <p className="text-sm font-medium tracking-wide">No reservations matching your criteria</p>
                                                 </div>
                                             </td>

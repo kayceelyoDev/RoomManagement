@@ -10,10 +10,10 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { analytics, dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Bed, LayoutGrid, LogOutIcon, NotebookPen, TicketCheck, User } from 'lucide-react';
+import { Bed, Database, LayoutGrid, LogOutIcon, NotebookPen, TicketCheck, User } from 'lucide-react';
 import AppLogo from './app-logo';
 import rooms from '@/routes/rooms';
 import reservation from '@/routes/reservation';
@@ -57,6 +57,13 @@ export function AppSidebar() {
             href: usermanagement.index.url(),
             icon: User,
         }] : []),
+
+         ...(auth.user?.role === 'supperAdmin' ? [{
+            title: 'Analytics',
+            href: analytics.url(),
+            icon: Database,
+        }] : []),
+
     ];
 
     return (
