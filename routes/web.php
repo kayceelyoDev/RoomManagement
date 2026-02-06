@@ -10,6 +10,7 @@ use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\RoomCategoryController;
 use App\Http\Controllers\RoomsController;
 use App\Http\Controllers\ServicesController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -23,6 +24,7 @@ Route::middleware(['auth', 'verified', 'role'])->group(function () {
     Route::resource('services', ServicesController::class);
     Route::resource('checkin', CheckInController::class);
     Route::resource('checkout', CheckoutController::class);
+    Route::resource('usermanagement', UserController::class);
 });
 
 ///email verification routres///

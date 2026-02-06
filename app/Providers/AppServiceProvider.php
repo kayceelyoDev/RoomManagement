@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
      * Bootstrap any application services.
      */
     public function boot(): void
-    {   
+    {
         // Gate::define('acces-admin',function(User $user){
         //     return $user->role === roles::ADMIN;
         // });
@@ -54,7 +54,23 @@ class AppServiceProvider extends ServiceProvider
         //     ]);
         // });
 
-        Gate::define('acces-guest',function(User $user){
+        Gate::define('manage-rooms', function (User $user) {
+            return in_array($user->role, [
+                roles::ADMIN,
+                roles::SUPPERADMIN,
+            ]);
+        });
+
+       Gate::define('manage-user', function (User $user) {
+           
+            $userRole = $user->role instanceof roles ? $user->role->value : $user->role;
+
+            // Now compare the strings safely
+            return strtolower($userRole) === strtolower(roles::SUPPERADMIN->value);
+        });
+
+        // Keep your guest gate if needed
+        Gate::define('acces-guest', function (User $user) {
             return $user->role === roles::GUEST;
         });
     }
@@ -67,7 +83,8 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
+        Password::defaults(
+            fn(): ?Password => app()->isProduction()
             ? Password::min(12)
                 ->mixedCase()
                 ->letters()

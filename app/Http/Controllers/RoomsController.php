@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enum\roles;
 use App\Http\Requests\RoomRequest;
 use App\Models\RoomCategory;
 use App\Models\Rooms;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Services\RoomServices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class RoomsController extends Controller
@@ -16,6 +18,15 @@ class RoomsController extends Controller
     /**
      * Display a listing of the resource.
      */
+
+    private function authorizeManager()
+    {
+        if (!Gate::allows('manage-rooms')) {
+            // We use ->send() here to force the redirect immediately 
+            // from within this helper method.
+            return redirect()->route('error')->send();
+        }
+    }
     public function index()
     {
         // 1. Fetch Categories (Lean Select)
@@ -24,14 +35,14 @@ class RoomsController extends Controller
         // 2. Fetch Rooms with optimized columns and eager loading
         $rooms = Rooms::query()
             ->select([
-                'id', 
-                'room_categories_id', 
-                'room_name', 
-                'room_description', 
-                'max_extra_person', 
-                'room_amenities', 
-                'type_of_bed', 
-                'status', 
+                'id',
+                'room_categories_id',
+                'room_name',
+                'room_description',
+                'max_extra_person',
+                'room_amenities',
+                'type_of_bed',
+                'status',
                 'img_url'
             ])
             ->with(['roomCategory:id,room_category,price']) // Only fetch needed category fields
@@ -66,6 +77,7 @@ class RoomsController extends Controller
     public function create()
     {
         // Only fetch what the dropdown needs
+        $this->authorizeManager();
         $categories = RoomCategory::select('id', 'room_category', 'price')->get();
         return Inertia::render('rooms/RoomPage', ['categories' => $categories]);
     }
@@ -75,6 +87,10 @@ class RoomsController extends Controller
      */
     public function store(RoomRequest $request, RoomServices $roomServices)
     {
+        // Check if the user is NEITHER Admin NOR Super Admin
+        $this->authorizeManager();
+
+        // If they pass the check, proceed with creation
         $data = $request->validated();
         $data['user_id'] = Auth::id();
 
@@ -88,6 +104,7 @@ class RoomsController extends Controller
      */
     public function update(RoomRequest $request, RoomServices $roomServices, Rooms $room)
     {
+        $this->authorizeManager();
         $data = $request->validated();
 
         // Prevent overwriting image with null if no file was uploaded
@@ -104,7 +121,8 @@ class RoomsController extends Controller
      * Remove the specified resource from storage.
      */
     public function destroy(Rooms $room, RoomServices $services)
-    {
+    {   
+        $this->authorizeManager();
         // Efficient Check: Don't load all reservations, just check existence
         if ($room->reservations()->exists()) {
             return redirect()->back()->withErrors([
@@ -112,7 +130,7 @@ class RoomsController extends Controller
             ]);
         }
 
-        $services->deleteRoom($room); 
+        $services->deleteRoom($room);
 
         return redirect()->route('rooms.index')->with('success', 'Room deleted successfully.');
     }
