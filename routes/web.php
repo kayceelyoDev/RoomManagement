@@ -2,6 +2,7 @@
 
 use App\Enum\roles;
 use App\Http\Controllers\CheckInController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\emailVerificationController;
 use App\Http\Controllers\GuestPage;
@@ -21,6 +22,7 @@ Route::middleware(['auth', 'verified', 'role'])->group(function () {
     Route::resource('roomcategory', RoomCategoryController::class);
     Route::resource('services', ServicesController::class);
     Route::resource('checkin', CheckInController::class);
+    Route::resource('checkout', CheckoutController::class);
 });
 
 ///email verification routres///

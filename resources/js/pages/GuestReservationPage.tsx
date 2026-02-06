@@ -1,9 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { 
     Calendar, 
-    MapPin, 
     LogOut, 
-    User, 
     Bell, 
     Clock, 
     CheckCircle, 
@@ -15,9 +13,11 @@ import {
     Trash2,
     AlertTriangle,
     Info,
-    Mail
+    Mail,
+    User,
+    ChevronRight
 } from 'lucide-react';
-import { format, parseISO, formatDistanceToNow } from 'date-fns'; // <--- Added formatDistanceToNow
+import { format, parseISO, formatDistanceToNow } from 'date-fns'; 
 import { logout } from '@/routes'; 
 import guest from '@/routes/guest';
 
@@ -78,6 +78,7 @@ export default function GuestReservationPage({ reservations, notifications, user
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
             currency: 'PHP',
+            minimumFractionDigits: 0,
         }).format(amount);
     };
 
@@ -87,7 +88,6 @@ export default function GuestReservationPage({ reservations, notifications, user
         return `/storage/${url}`;
     };
 
-    // --- NEW: Helper for "2 hours ago" format ---
     const getRelativeTime = (dateString: string) => {
         try {
             return formatDistanceToNow(parseISO(dateString), { addSuffix: true });
@@ -96,25 +96,34 @@ export default function GuestReservationPage({ reservations, notifications, user
         }
     };
 
-    const getStatusStyles = (status: string) => {
+    // Semantic Status Styling
+    const getStatusConfig = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'confirmed': return 'bg-green-100 text-green-700 border-green-200';
-            case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'cancelled': return 'bg-red-100 text-red-700 border-red-200';
-            case 'checked-in': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'checked-out': return 'bg-gray-100 text-gray-700 border-gray-200';
-            case 'completed': return 'bg-gray-100 text-gray-700 border-gray-200';
-            default: return 'bg-gray-100 text-gray-700 border-gray-200';
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'confirmed': return <CheckCircle size={14} />;
-            case 'pending': return <Clock size={14} />;
-            case 'cancelled': return <XCircle size={14} />;
-            case 'checked-in': return <Sparkles size={14} />;
-            default: return <Clock size={14} />;
+            case 'confirmed': 
+                return { 
+                    style: 'bg-primary/10 text-primary border-primary/20', 
+                    icon: <CheckCircle size={14} /> 
+                };
+            case 'pending': 
+                return { 
+                    style: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:text-yellow-400', 
+                    icon: <Clock size={14} /> 
+                };
+            case 'cancelled': 
+                return { 
+                    style: 'bg-destructive/10 text-destructive border-destructive/20', 
+                    icon: <XCircle size={14} /> 
+                };
+            case 'checked-in': 
+                return { 
+                    style: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400', 
+                    icon: <Sparkles size={14} /> 
+                };
+            default: 
+                return { 
+                    style: 'bg-muted text-muted-foreground border-border', 
+                    icon: <Clock size={14} /> 
+                };
         }
     };
 
@@ -123,109 +132,103 @@ export default function GuestReservationPage({ reservations, notifications, user
         if (confirm('Are you sure you want to cancel this reservation? This action cannot be undone.')) {
             router.post(`/reservation/cancel/${id}`, {}, {
                 preserveScroll: true,
-                onSuccess: () => {
-                    // Optional: Add toast notification logic here
-                }
             });
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#F9FAFB] font-sans text-[#2C3930]">
+        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-secondary selection:text-secondary-foreground transition-colors duration-300">
             <Head title="My Reservations" />
 
             {/* --- NAVIGATION --- */}
-            <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100 transition-all">
-                <div className="px-6 py-3 flex items-center justify-between max-w-7xl mx-auto">
-                    <Link href={guest.guestpage.url()} className="flex items-center gap-2 hover:opacity-80 transition group">
-                        <ArrowLeft className="text-[#2C3930] group-hover:-translate-x-1 transition-transform" size={20} />
-                        <span className="text-sm font-bold uppercase tracking-wider text-[#2C3930]">Back to Home</span>
+            <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border transition-all">
+                <div className="px-6 h-16 flex items-center justify-between max-w-7xl mx-auto">
+                    <Link href={guest.guestpage.url()} className="flex items-center gap-2 group text-muted-foreground hover:text-primary transition-colors">
+                        <div className="p-2 rounded-full bg-muted group-hover:bg-primary/10 transition-colors">
+                            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                        </div>
+                        <span className="text-sm font-bold uppercase tracking-wider hidden sm:block">Back to Home</span>
                     </Link>
                     
-                    <div className="flex items-center gap-2">
-                        <img 
-                            src="/img/logo.jpg" 
-                            alt="Estaca Bay Logo" 
-                            className="h-8 w-8 object-contain rounded-full border border-gray-200" 
-                        />
-                        <span className="text-lg font-serif font-bold text-[#2C3930]">Estaca Bay</span>
+                    <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full overflow-hidden border border-border">
+                            <img src="/img/logo.jpg" alt="Logo" className="h-full w-full object-cover" />
+                        </div>
+                        <span className="text-lg font-bold tracking-tight">Estaca Bay</span>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <main className="max-w-7xl mx-auto px-6 py-10">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
                     
                     {/* --- LEFT SIDEBAR (Profile & Notifications) --- */}
-                    <div className="lg:col-span-4 space-y-6">
+                    <div className="lg:col-span-4 space-y-8">
                         
                         {/* Profile Card */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-24 bg-[#2C3930]" />
-                            <div className="relative z-10 flex flex-col items-center text-center mt-8">
-                                <div className="w-20 h-20 bg-white rounded-full p-1 shadow-md mb-3">
-                                    <div className="w-full h-full bg-[#FFFDE1] rounded-full flex items-center justify-center text-[#2C3930] text-2xl font-serif font-bold">
+                        <div className="bg-card rounded-3xl shadow-sm border border-border overflow-hidden relative group">
+                            {/* Decorative Background */}
+                            <div className="absolute top-0 left-0 w-full h-28 bg-gradient-to-br from-primary/20 to-secondary/20" />
+                            
+                            <div className="relative z-10 flex flex-col items-center text-center mt-12 px-6 pb-8">
+                                <div className="w-24 h-24 bg-card rounded-full p-1.5 shadow-lg mb-4">
+                                    <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-primary text-3xl font-serif font-bold">
                                         {user.name.charAt(0)}
                                     </div>
                                 </div>
-                                <h2 className="text-xl font-bold text-[#2C3930]">{user.name}</h2>
-                                
-                                {/* Updated User Info Section */}
-                                <div className="flex flex-col items-center gap-1 mb-6">
-                                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                                        <Mail size={12} />
-                                        <span>{user.email}</span>
-                                    </div>
-                                    <div className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
-                                        Joined {getRelativeTime(user.created_at)}
-                                    </div>
+                                <h2 className="text-2xl font-bold text-foreground">{user.name}</h2>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 mb-6">
+                                    <Mail size={14} />
+                                    <span>{user.email}</span>
                                 </div>
                                 
-                                <Link 
-                                    href={logout()} 
-                                    method="post" 
-                                    as="button" 
-                                    className="w-full py-2.5 flex items-center justify-center gap-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-100 transition"
-                                >
-                                    <LogOut size={16} /> Log Out
-                                </Link>
+                                <div className="w-full pt-6 border-t border-border flex flex-col gap-3">
+                                    <div className="flex justify-between items-center text-sm px-2">
+                                        <span className="text-muted-foreground">Member Since</span>
+                                        <span className="font-medium text-foreground">{format(parseISO(user.created_at), 'MMM yyyy')}</span>
+                                    </div>
+                                    <Link 
+                                        href={logout()} 
+                                        method="post" 
+                                        as="button" 
+                                        className="mt-2 w-full py-3 flex items-center justify-center gap-2 bg-destructive/5 text-destructive rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-destructive/15 transition-colors"
+                                    >
+                                        <LogOut size={16} /> Log Out
+                                    </Link>
+                                </div>
                             </div>
                         </div>
 
                         {/* Notifications Card */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="p-4 border-b border-gray-50 flex items-center gap-2 bg-gray-50/50">
-                                <Bell size={16} className="text-[#628141]" />
-                                <h3 className="font-bold text-[#2C3930] text-sm uppercase tracking-wide">Notifications</h3>
+                        <div className="bg-card rounded-3xl shadow-sm border border-border overflow-hidden">
+                            <div className="p-5 border-b border-border flex items-center gap-2 bg-muted/30">
+                                <Bell size={18} className="text-primary" />
+                                <h3 className="font-bold text-foreground text-sm uppercase tracking-wide">Notifications</h3>
                             </div>
                             
-                            <div className="divide-y divide-gray-100">
+                            <div className="divide-y divide-border">
                                 {notifications.length > 0 ? (
                                     notifications.map((notif) => (
-                                        <div key={notif.id} className="p-4 flex gap-3 hover:bg-[#F9FAFB] transition-colors">
-                                            <div className="flex-shrink-0 mt-0.5">
-                                                {notif.type === 'warning' && <AlertTriangle size={18} className="text-amber-500" />}
-                                                {notif.type === 'success' && <CheckCircle size={18} className="text-[#628141]" />}
-                                                {notif.type === 'info' && <Info size={18} className="text-blue-500" />}
+                                        <div key={notif.id} className="p-5 flex gap-4 hover:bg-muted/30 transition-colors">
+                                            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${
+                                                notif.type === 'warning' ? 'bg-yellow-500/10 text-yellow-600' :
+                                                notif.type === 'success' ? 'bg-primary/10 text-primary' :
+                                                'bg-blue-500/10 text-blue-500'
+                                            }`}>
+                                                {notif.type === 'warning' && <AlertTriangle size={16} />}
+                                                {notif.type === 'success' && <CheckCircle size={16} />}
+                                                {notif.type === 'info' && <Info size={16} />}
                                             </div>
-                                            <div className="flex-1">
-                                                <h4 className={`text-sm font-bold ${
-                                                    notif.type === 'warning' ? 'text-amber-700' :
-                                                    notif.type === 'success' ? 'text-[#2C3930]' :
-                                                    'text-gray-700'
-                                                }`}>
-                                                    {notif.title}
-                                                </h4>
-                                                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                                                    {notif.message}
-                                                </p>
+                                            <div>
+                                                <h4 className="text-sm font-bold text-foreground">{notif.title}</h4>
+                                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{notif.message}</p>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="text-center py-8 text-gray-400 text-sm italic flex flex-col items-center gap-2">
-                                        <Bell size={24} className="opacity-20" />
-                                        <p>No new notifications</p>
+                                    <div className="py-10 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
+                                        <div className="p-3 bg-muted rounded-full opacity-50"><Bell size={20} /></div>
+                                        <p>You're all caught up!</p>
                                     </div>
                                 )}
                             </div>
@@ -234,114 +237,128 @@ export default function GuestReservationPage({ reservations, notifications, user
 
                     {/* --- RIGHT MAIN (Reservation History) --- */}
                     <div className="lg:col-span-8">
-                        <div className="flex items-center justify-between mb-6">
-                            <h1 className="text-2xl font-serif font-bold text-[#2C3930]">My Reservations</h1>
-                            <span className="bg-[#2C3930] text-[#FFFDE1] px-3 py-1 rounded-full text-xs font-bold">
-                                {reservations.length} Total
+                        <div className="flex items-end justify-between mb-8">
+                            <div>
+                                <h1 className="text-3xl font-bold text-foreground tracking-tight">My Reservations</h1>
+                                <p className="text-muted-foreground mt-1">Manage your upcoming and past stays.</p>
+                            </div>
+                            <span className="bg-primary/10 text-primary border border-primary/20 px-4 py-1.5 rounded-full text-xs text-center font-bold uppercase tracking-wider">
+                                {reservations.length} Bookings
                             </span>
                         </div>
 
                         <div className="space-y-6">
                             {reservations.length > 0 ? (
-                                reservations.map((res) => (
-                                    <div key={res.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group">
-                                        <div className="flex flex-col md:flex-row">
-                                            
-                                            {/* Image Section */}
-                                            <div className="w-full md:w-1/3 h-48 md:h-auto relative overflow-hidden">
-                                                <img 
-                                                    src={getRoomImage(res.room.img_url)} 
-                                                    alt={res.room.room_name} 
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
-                                                />
-                                                <div className="absolute top-3 left-3">
-                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusStyles(res.status)} backdrop-blur-sm bg-opacity-90`}>
-                                                        {getStatusIcon(res.status)} {res.status}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Details Section */}
-                                            <div className="w-full md:w-2/3 p-6 flex flex-col">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <span className="text-[10px] font-bold text-[#628141] uppercase tracking-widest">
-                                                            {res.room.room_category?.room_category}
+                                reservations.map((res) => {
+                                    const statusConfig = getStatusConfig(res.status);
+                                    return (
+                                        <div key={res.id} className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 group">
+                                            <div className="flex flex-col md:flex-row">
+                                                
+                                                {/* Image Section */}
+                                                <div className="w-full md:w-5/12 h-56 md:h-auto relative overflow-hidden bg-muted">
+                                                    <img 
+                                                        src={getRoomImage(res.room.img_url)} 
+                                                        alt={res.room.room_name} 
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent md:hidden" />
+                                                    
+                                                    {/* Floating Status Badge */}
+                                                    <div className="absolute top-4 left-4 backdrop-blur-md bg-card/80 dark:bg-card/90 rounded-full pl-1 pr-3 py-1 flex items-center gap-2 border border-border shadow-sm">
+                                                        <div className={`p-1 rounded-full ${statusConfig.style.split(' ')[0]} ${statusConfig.style.split(' ')[1]}`}>
+                                                            {statusConfig.icon}
+                                                        </div>
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                                                            {res.status}
                                                         </span>
-                                                        <h3 className="text-xl font-bold text-[#2C3930] mt-1">{res.room.room_name}</h3>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <span className="block text-xs text-gray-400 uppercase font-bold">Total Amount</span>
-                                                        <span className="text-lg font-bold text-[#2C3930]">{formatCurrency(res.reservation_amount)}</span>
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-4 my-4 py-4 border-t border-b border-gray-50">
-                                                    <div>
-                                                        <span className="text-xs text-gray-400 block mb-1">Check-in</span>
-                                                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                                            <Calendar size={16} className="text-[#628141]" />
-                                                            {format(parseISO(res.check_in_date), 'MMM dd, yyyy')}
+                                                {/* Details Section */}
+                                                <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <span className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1 block">
+                                                                {res.room.room_category?.room_category || 'Standard Room'}
+                                                            </span>
+                                                            <h3 className="text-xl font-bold text-foreground">{res.room.room_name}</h3>
                                                         </div>
-                                                        <span className="text-xs text-gray-400 ml-6">{format(parseISO(res.check_in_date), 'h:mm a')}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-xs text-gray-400 block mb-1">Check-out</span>
-                                                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                                            <Calendar size={16} className="text-[#628141]" />
-                                                            {format(parseISO(res.check_out_date), 'MMM dd, yyyy')}
+                                                        <div className="text-right">
+                                                            <div className="text-xl font-bold text-primary">{formatCurrency(res.reservation_amount)}</div>
+                                                            <span className="text-[10px] text-muted-foreground uppercase font-bold">Total Paid</span>
                                                         </div>
-                                                        <span className="text-xs text-gray-400 ml-6">{format(parseISO(res.check_out_date), 'h:mm a')}</span>
                                                     </div>
-                                                </div>
 
-                                                {/* Services */}
-                                                {res.services.length > 0 && (
-                                                    <div className="mb-4">
-                                                        <p className="text-xs font-bold text-gray-400 mb-2">ADD-ONS</p>
-                                                        <div className="flex flex-wrap gap-2">
+                                                    {/* Dates Grid */}
+                                                    <div className="flex gap-4 p-4 bg-muted/40 rounded-2xl border border-border mb-6">
+                                                        <div className="flex-1">
+                                                            <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Check-in</span>
+                                                            <div className="font-semibold text-foreground text-sm flex items-center gap-2">
+                                                                <Calendar size={14} className="text-primary" />
+                                                                {format(parseISO(res.check_in_date), 'MMM dd, yyyy')}
+                                                            </div>
+                                                            <span className="text-xs text-muted-foreground pl-6">{format(parseISO(res.check_in_date), 'h:mm a')}</span>
+                                                        </div>
+                                                        <div className="w-px bg-border"></div>
+                                                        <div className="flex-1">
+                                                            <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Check-out</span>
+                                                            <div className="font-semibold text-foreground text-sm flex items-center gap-2">
+                                                                <Calendar size={14} className="text-primary" />
+                                                                {format(parseISO(res.check_out_date), 'MMM dd, yyyy')}
+                                                            </div>
+                                                            <span className="text-xs text-muted-foreground pl-6">{format(parseISO(res.check_out_date), 'h:mm a')}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Services Pill List */}
+                                                    {res.services.length > 0 && (
+                                                        <div className="flex flex-wrap gap-2 mb-6">
                                                             {res.services.map(svc => (
-                                                                <span key={svc.id} className="inline-flex items-center gap-1 text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded border border-gray-200">
-                                                                    <span className="font-bold text-[#2C3930]">{svc.pivot.quantity}x</span> {svc.services_name}
+                                                                <span key={svc.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary/10 text-secondary-foreground text-xs rounded-lg font-medium border border-secondary/20">
+                                                                    <Sparkles size={10} />
+                                                                    <span><span className="font-bold">{svc.pivot.quantity}x</span> {svc.services_name}</span>
                                                                 </span>
                                                             ))}
                                                         </div>
-                                                    </div>
-                                                )}
-                                                
-                                                {/* Card Footer: UPDATED TIME FORMAT */}
-                                                <div className="mt-auto flex items-center justify-between pt-2">
-                                                    {/* Changed from specific date to relative time (2 hours ago) */}
-                                                    <div className="text-xs text-gray-400 flex items-center gap-1" title={format(parseISO(res.created_at), 'PPP pp')}>
-                                                        <CreditCard size={12} /> Booked {getRelativeTime(res.created_at)}
-                                                    </div>
-
-                                                    { !['cancelled', 'checked-in', 'checked-out', 'completed'].includes(res.status.toLowerCase()) && (
-                                                        <button 
-                                                            onClick={() => handleCancel(res.id)}
-                                                            className="flex items-center gap-1.5 px-4 py-2 bg-white text-red-600 border border-red-200 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:border-red-300 transition-colors"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                            Cancel Reservation
-                                                        </button>
                                                     )}
+                                                    
+                                                    {/* Footer Actions */}
+                                                    <div className="mt-auto pt-4 border-t border-border flex items-center justify-between">
+                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground" title={format(parseISO(res.created_at), 'PPP pp')}>
+                                                            <CreditCard size={14} /> 
+                                                            <span>Booked {getRelativeTime(res.created_at)}</span>
+                                                        </div>
+
+                                                        {['pending', 'confirmed'].includes(res.status.toLowerCase()) && (
+                                                            <button 
+                                                                onClick={() => handleCancel(res.id)}
+                                                                className="flex items-center gap-1.5 px-4 py-2 bg-destructive/10 text-destructive rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-destructive hover:text-white transition-all duration-300"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                                Cancel
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-                                    <div className="w-16 h-16 bg-[#FFFDE1] rounded-full flex items-center justify-center mb-4 text-[#D8E983]">
-                                        <BedDouble size={32} />
+                                <div className="flex flex-col items-center justify-center py-20 bg-card rounded-3xl border-2 border-dashed border-border text-center">
+                                    <div className="w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center mb-6 text-muted-foreground">
+                                        <BedDouble size={40} />
                                     </div>
-                                    <h3 className="text-lg font-bold text-[#2C3930]">No Reservations Yet</h3>
-                                    <p className="text-sm text-gray-500 mb-6">You haven't booked any stays with us yet.</p>
+                                    <h3 className="text-xl font-bold text-foreground">No Reservations Yet</h3>
+                                    <p className="text-muted-foreground max-w-sm mt-2 mb-8">
+                                        You haven't booked any stays with us yet. Start your journey by finding the perfect room.
+                                    </p>
                                     <Link 
                                         href={guest.guestpage.url()}
-                                        className="px-6 py-2.5 bg-[#2C3930] text-[#FFFDE1] rounded-lg text-sm font-bold uppercase tracking-wider hover:bg-[#628141] transition shadow-md"
+                                        className="px-8 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-primary/90 transition shadow-lg shadow-primary/20 flex items-center gap-2"
                                     >
-                                        Find a Room
+                                        Find a Room <ChevronRight size={16} />
                                     </Link>
                                 </div>
                             )}

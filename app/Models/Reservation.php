@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Reservation extends Model
 {
@@ -25,12 +26,12 @@ class Reservation extends Model
     ];
 
     protected $casts = [
-    'status' => ReservationEnum::class, // <--- Add this line
-    'check_in_date' => 'datetime',
-    'check_out_date' => 'datetime',
-];
+        'status' => ReservationEnum::class, // <--- Add this line
+        'check_in_date' => 'datetime',
+        'check_out_date' => 'datetime',
+    ];
 
-    public function user() 
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
@@ -40,10 +41,14 @@ class Reservation extends Model
         return $this->belongsTo(Rooms::class);
     }
 
+    public function checkout(): HasOne
+    {
+        return $this->hasOne(Checkout::class);
+    }
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Services::class, 'reservation_services', 'reservation_id', 'services_id')
-                    ->withPivot('quantity', 'total_amount')
-                    ->withTimestamps();
+            ->withPivot('quantity', 'total_amount')
+            ->withTimestamps();
     }
 }
