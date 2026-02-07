@@ -12,11 +12,7 @@ use Illuminate\Support\Facades\Mail;
 
 class emailVerificationController extends Controller
 {
-    /**
-     * Verify a reservation via email link.
-     * * Recommended: Ensure your route is defined with 'signed' middleware:
-     * Route::get('/reservation/verify/{id}', [emailVerificationController::class, 'verifyReservation'])->name('reservation.verify')->middleware('signed');
-     */
+    
     public function verifyReservation(Request $request, $id)
     {
         // 1. Find the reservation or fail with 404

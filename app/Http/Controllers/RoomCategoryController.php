@@ -19,8 +19,6 @@ class RoomCategoryController extends Controller
     private function authorizeManager()
     {
         if (!Gate::allows('manage-rooms')) {
-            // We use ->send() here to force the redirect immediately 
-            // from within this helper method.
             return redirect()->route('error')->send();
         }
     }

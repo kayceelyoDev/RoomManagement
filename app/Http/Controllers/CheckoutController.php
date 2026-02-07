@@ -18,7 +18,7 @@ class CheckoutController extends Controller
         // Fetch only reservations that are currently in-house
         $reservations = Reservation::query()
             ->with(['room.roomCategory'])
-            ->where('status', 'checked_in') // Adjust this string to match your Enum/Status
+            ->where('status', 'checked_in')
             ->orderBy('check_out_date', 'asc')
             ->get()
             ->map(function ($reservation) {

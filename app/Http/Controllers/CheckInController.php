@@ -10,12 +10,7 @@ use Inertia\Inertia;
 
 class CheckInController extends Controller
 {
-    /**
-     * Display a listing of eligible check-ins.
-     */
-    // app/Http/Controllers/CheckInController.php
-
-    // app/Http/Controllers/CheckInController.php
+  
 
     public function index()
     {

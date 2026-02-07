@@ -34,7 +34,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    // --- PRIVATE HELPER METHODS (PostgreSQL Compatible) ---
+  
 
     private function getOperationalStats()
     {
@@ -84,7 +84,7 @@ class DashboardController extends Controller
 
     private function getBookingVolume()
     {
-        // FIXED: PostgreSQL uses CAST(col AS DATE) instead of DATE(col)
+      
         return Reservation::select(
             DB::raw('CAST(check_in_date AS DATE) as date'),
             DB::raw('COUNT(*) as count')
@@ -108,7 +108,7 @@ class DashboardController extends Controller
             ? round((($currentRevenue - $previousRevenue) / $previousRevenue) * 100, 1)
             : ($currentRevenue > 0 ? 100 : 0);
 
-        // FIXED: PostgreSQL uses CAST(col AS DATE)
+       
         $revenueTrend = Transaction::whereBetween('created_at', [$thirtyDaysAgo, $now])
             ->select(
                 DB::raw('CAST(created_at AS DATE) as date'),

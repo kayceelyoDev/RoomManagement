@@ -18,13 +18,11 @@ use Laravel\Fortify\Features;
 
 class GuestPage extends Controller
 {
-    /**
-     * Public Welcome Page
-     */
+    
     public function getRooms()
     {
         $rooms = Rooms::latest()
-            // FIXED: Changed 'room_category_id' to 'room_categories_id'
+           
             ->select('id', 'room_name', 'room_categories_id', 'img_url', 'max_extra_person', 'status')
             ->with([
                 'roomCategory:id,room_category,price,room_capacity',
@@ -51,7 +49,7 @@ class GuestPage extends Controller
         }
 
         $rooms = Rooms::query()
-            // FIXED: Changed 'room_category_id' to 'room_categories_id'
+       
             ->select('id', 'room_name','room_description', 'room_categories_id', 'img_url', 'max_extra_person', 'status')
             ->with([
                 'roomCategory:id,room_category,price,room_capacity',
@@ -78,7 +76,7 @@ class GuestPage extends Controller
     {
         $userId = Auth::id();
 
-        // Columns to fetch
+       
         $columns = ['id', 'user_id', 'room_id', 'check_in_date', 'check_out_date', 'status', 'reservation_amount', 'created_at', 'updated_at'];
 
         // 1. Fetch Active Reservations (Unlimited)
@@ -90,7 +88,7 @@ class GuestPage extends Controller
             ])
             ->select($columns)
             ->with([
-                // FIXED: Ensure we fetch room_categories_id if needed, otherwise standard relation is fine
+                
                 'room:id,room_name,room_categories_id,img_url', 
                 'room.roomCategory:id,room_category',
                 'services:id,services_name'
@@ -98,12 +96,12 @@ class GuestPage extends Controller
             ->latest()
             ->get();
 
-        // 2. Fetch History/Cancelled (Limit 5)
+      
         $inactive = Reservation::where('user_id', $userId)
             ->whereIn('status', [
                 ReservationEnum::Cancelled,
                 ReservationEnum::CheckedOut,
-                // ReservationEnum::Completed // Add this if you have a completed status
+               
             ])
             ->select($columns)
             ->with([
@@ -115,7 +113,7 @@ class GuestPage extends Controller
             ->take(5)
             ->get();
 
-        // Merge and prepare for frontend
+      
         $reservations = $active->merge($inactive)->values();
 
         return Inertia::render('GuestReservationPage', [
