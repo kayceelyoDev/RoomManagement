@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\enum\ReservationEnum;
+use App\Enum\ReservationEnum;
 use App\Mail\ReservationConfirmed;
 use App\Models\Reservation;
 use Exception;
