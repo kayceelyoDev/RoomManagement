@@ -2,12 +2,11 @@
 
 namespace App\Services;
 
-
 use App\Enum\ReservationEnum;
 use App\Mail\ReservationConfirmed;
 use App\Models\Reservation;
 use Exception;
-use Illuminate\Support\Carbon; // <--- Import Carbon
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -15,52 +14,51 @@ use Illuminate\Validation\ValidationException;
 
 class ReservationServices
 {
-    /**
-     * Helper to detect overlapping reservations with a 3-hour cleaning buffer.
-     */
-protected function checkAvailability($roomId, $checkIn, $checkOut, $excludeId = null)
+    private const BUFFER_HOURS = 3;
+
+    protected function checkAvailability($roomId, $checkIn, $checkOut, $excludeId = null)
     {
-        // 1. Create Carbon instances
-        $checkInDate = Carbon::parse($checkIn);
-        $checkOutDate = Carbon::parse($checkOut);
+        $newStart = Carbon::parse($checkIn);
+        $newEnd   = Carbon::parse($checkOut)->addHours(self::BUFFER_HOURS);
 
-        // 2. Calculate the "Buffered Check-in" in PHP
-        // Logic: Instead of saying "DB CheckOut + 3 hours > New CheckIn",
-        // We say: "DB CheckOut > New CheckIn - 3 hours"
-        // This removes the database-specific DATE_ADD function completely.
-        $checkInThreshold = $checkInDate->copy()->subHours(3);
-
+        // FIX 1: Add 'checked_out' here. 
+        // A checked-out room is still "occupied" by the cleaning buffer.
         $activeStatuses = [
-            ReservationEnum::Pending,
-            ReservationEnum::Confirmed,
-            ReservationEnum::CheckedIn,
+            ReservationEnum::Pending->value,
+            ReservationEnum::Confirmed->value,
+            ReservationEnum::CheckedIn->value,
+            ReservationEnum::CheckedOut->value, // <--- CRITICAL ADDITION
         ];
 
-        $conflicts = Reservation::where('room_id', $roomId)
+        $conflict = Reservation::where('room_id', $roomId)
             ->whereIn('status', $activeStatuses)
-            ->where(function ($query) use ($checkInDate, $checkOutDate, $checkInThreshold) {
-                // Logic:
-                // 1. The existing reservation must start before our new reservation ends.
-                // 2. The existing reservation must end after our new reservation starts (minus buffer).
-                
-                $query->where('check_in_date', '<', $checkOutDate)
-                      ->where('check_out_date', '>', $checkInThreshold); 
+            ->where(function ($query) use ($newStart, $newEnd) {
+                // Logic: (StartA < EndB) AND (EndA > StartB)
+                // Existing End Time = check_out_date + 3 Hours Buffer
+                $query->whereRaw('check_in_date < ?', [$newEnd])
+                      ->whereRaw('DATE_ADD(check_out_date, INTERVAL ? HOUR) > ?', [self::BUFFER_HOURS, $newStart]);
             })
             ->when($excludeId, function ($query, $id) {
                 $query->where('id', '!=', $id);
             })
-            ->exists();
+            ->first();
 
-        if ($conflicts) {
+        if ($conflict) {
+            $conflictEnd = Carbon::parse($conflict->check_out_date);
+            // Calculate strictly when the room is ready (Checkout + Buffer)
+            $readyTime = $conflictEnd->copy()->addHours(self::BUFFER_HOURS);
+
             throw ValidationException::withMessages([
-                'check_in_date' => ['The selected dates are no longer available (includes cleaning buffer).']
+                'check_in_date' => [
+                    "Conflict detected. This room is occupied or being cleaned until " . $readyTime->format('M d, h:i A') . "."
+                ]
             ]);
         }
     }
 
     public function createReservation(array $data)
     {
-        // 1. Format Dates before doing anything
+        // ... (rest of the code remains the same)
         $data['check_in_date'] = Carbon::parse($data['check_in_date'])->format('Y-m-d H:i:s');
         $data['check_out_date'] = Carbon::parse($data['check_out_date'])->format('Y-m-d H:i:s');
 
@@ -72,10 +70,11 @@ protected function checkAvailability($roomId, $checkIn, $checkOut, $excludeId = 
 
         DB::beginTransaction();
         try {
+            // ... (rest of logic)
             $servicesData = $data['selected_services'] ?? [];
             unset($data['selected_services']);
 
-            $data['status'] = $data['status'] ?? ReservationEnum::Pending;
+            $data['status'] = $data['status'] ?? ReservationEnum::Pending->value;
 
             $reservation = Reservation::create($data);
             
@@ -103,13 +102,13 @@ protected function checkAvailability($roomId, $checkIn, $checkOut, $excludeId = 
 
         } catch (Exception $e) {
             DB::rollBack();
-            throw $e; // Throw the REAL error so you can see it in logs
+            throw $e; 
         }
     }
 
     public function updateReservation(Reservation $reservation, array $data)
     {
-        // Format dates
+        // ... (rest of the code remains the same)
         $data['check_in_date'] = Carbon::parse($data['check_in_date'])->format('Y-m-d H:i:s');
         $data['check_out_date'] = Carbon::parse($data['check_out_date'])->format('Y-m-d H:i:s');
 

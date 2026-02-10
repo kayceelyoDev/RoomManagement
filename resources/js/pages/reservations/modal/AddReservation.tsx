@@ -2,14 +2,15 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import {
-    X, Minus, Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2, AlertCircle, Info, Bed
+    X, Minus, Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, 
+    Loader2, AlertCircle, Info, Bed, Clock, Calendar, Users, Phone, User, CreditCard
 } from 'lucide-react';
 import reservationRoute from '@/routes/reservation';
 import { 
-    format, addMonths, subMonths, startOfMonth, endOfMonth, 
+    format, subMonths, startOfMonth, endOfMonth, 
     eachDayOfInterval, isSameDay, startOfToday, addHours, startOfDay, 
-    isBefore, parseISO, isWithinInterval, areIntervalsOverlapping,
-    endOfDay, isAfter, differenceInCalendarDays, differenceInHours
+    isBefore, parseISO, areIntervalsOverlapping,
+    differenceInCalendarDays, differenceInHours, isAfter
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
 
@@ -75,6 +76,7 @@ export default function AddReservation({
     const [step, setStep] = useState<'room' | 'calendar' | 'form'>('room');
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [localError, setLocalError] = useState<string | null>(null);
 
     const { data, setData, post, processing, reset, errors, clearErrors } = useForm<ReservationFormState>({
         room_id: preSelectedRoomId ? preSelectedRoomId.toString() : '',
@@ -91,15 +93,12 @@ export default function AddReservation({
     const selectedRoom = useMemo(() => rooms.find(r => String(r.id) === String(data.room_id)), [data.room_id, rooms]);
     const isAdminOrStaff = ['admin', 'super_admin', 'staff'].includes(role || 'staff');
 
+    // --- Logic Hooks ---
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isOpen) {
             interval = setInterval(() => {
-                router.reload({ 
-                    only: ['rooms'], 
-                    preserveScroll: true,
-                    preserveState: true 
-                });
+                router.reload({ only: ['rooms'], preserveScroll: true, preserveState: true });
             }, 5000);
         }
         return () => clearInterval(interval);
@@ -108,10 +107,48 @@ export default function AddReservation({
     const validReservations = useMemo(() => {
         if (!selectedRoom?.reservations) return [];
         return selectedRoom.reservations.filter(res => {
-            const status = res.status.toLowerCase();
-            return ['pending', 'confirmed', 'checked-in'].includes(status);
+            const status = res.status.toLowerCase().replace(/[-_ ]/g, ''); 
+            return ['pending', 'confirmed', 'checkedin', 'checkedout'].includes(status);
         });
     }, [selectedRoom]);
+
+    // --- REAL-TIME CONFLICT CHECK ---
+    useEffect(() => {
+        if (!data.check_in_date || !data.check_out_date) {
+            setLocalError(null);
+            return;
+        }
+
+        const newStart = new Date(data.check_in_date);
+        const newEnd = new Date(data.check_out_date);
+
+        if (newStart >= newEnd) {
+            setLocalError("Check-out must be after check-in.");
+            return;
+        }
+
+        // Add buffer to NEW reservation to check strict overlap
+        const newEndWithBuffer = addHours(newEnd, BUFFER_HOURS);
+
+        const hasConflict = validReservations.some(res => {
+            const resStart = parseISO(res.check_in_date);
+            const resEnd = parseISO(res.check_out_date);
+            // Add buffer to EXISTING reservation
+            const resEndWithBuffer = addHours(resEnd, BUFFER_HOURS);
+
+            // STRICT OVERLAP LOGIC: (StartA < EndB) && (EndA > StartB)
+            // 1. Is New Start BEFORE Existing End (+Buffer)?
+            // 2. Is New End (+Buffer) AFTER Existing Start?
+            return newStart < resEndWithBuffer && newEndWithBuffer > resStart;
+        });
+
+        if (hasConflict) {
+            setLocalError("Time conflict detected (overlapping with existing booking or cleaning time).");
+        } else {
+            setLocalError(null);
+        }
+
+    }, [data.check_in_date, data.check_out_date, validReservations]);
 
     useEffect(() => {
         if (isOpen) {
@@ -125,6 +162,7 @@ export default function AddReservation({
             setTimeout(() => {
                 reset();
                 clearErrors();
+                setLocalError(null);
                 setStep('room');
                 setSelectedDate(null);
                 setCurrentMonth(new Date());
@@ -138,6 +176,7 @@ export default function AddReservation({
         }
     }, [selectedRoom]);
 
+    // --- Calendar Logic ---
     const daysInMonth = useMemo(() => {
         return eachDayOfInterval({ 
             start: startOfMonth(currentMonth), 
@@ -147,7 +186,7 @@ export default function AddReservation({
 
     const getReservationsForDate = (date: Date) => {
         const dayStart = startOfDay(date);
-        const dayEnd = endOfDay(date);
+        const dayEnd = addHours(dayStart, 24);
         return validReservations.filter(res => {
             const start = parseISO(res.check_in_date);
             const end = parseISO(res.check_out_date);
@@ -160,9 +199,8 @@ export default function AddReservation({
         const overlapping = validReservations.filter(res => {
             const start = parseISO(res.check_in_date);
             const end = parseISO(res.check_out_date);
-            return isWithinInterval(end, { start: startOfDay(date), end: endOfDay(date) }) ||
-                   isWithinInterval(start, { start: startOfDay(date), end: endOfDay(date) }) ||
-                   (isBefore(start, startOfDay(date)) && isAfter(end, endOfDay(date)));
+            // Simple overlap check for the day grid
+            return areIntervalsOverlapping({ start: startOfDay(date), end: addHours(startOfDay(date), 24) }, { start, end });
         });
 
         if (overlapping.length === 0) return standardCheckIn;
@@ -211,271 +249,301 @@ export default function AddReservation({
         setData('selected_services', newServices);
     };
 
+    // --- Price Calculation ---
     const priceDetails = useMemo(() => {
-        let roomTotal = 0; let nights = 0; let extraHours = 0;
+        let roomTotal = 0; 
+        let nights = 0; 
+        let extraHours = 0;
+        let lateHours = 0;
+
         if (data.check_in_date && data.check_out_date && selectedRoom) {
             const start = new Date(data.check_in_date);
             const end = new Date(data.check_out_date);
+
             if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
                 nights = differenceInCalendarDays(end, start);
-                if (nights === 0) nights = 1; 
-                const standardCheckIn = addHours(startOfDay(start), 14);
-                const standardCheckOut = addHours(startOfDay(end), 12);
-                const earlyDiff = differenceInHours(standardCheckIn, start);
-                const earlyHours = Math.max(0, earlyDiff);
-                const lateDiff = differenceInHours(end, standardCheckOut);
-                const lateHours = Math.max(0, lateDiff);
-                extraHours = earlyHours + lateHours;
+                if (nights === 0) nights = 1;
+
+                const policyCheckOut = new Date(end);
+                policyCheckOut.setHours(12, 0, 0, 0); 
+
+                if (isAfter(end, policyCheckOut)) {
+                    lateHours = differenceInHours(end, policyCheckOut);
+                }
+
+                extraHours = lateHours; 
                 const roomPrice = selectedRoom.room_category?.price ?? 0;
-                roomTotal = (nights * roomPrice) + (extraHours * (roomPrice * 0.10));
+                const hourlyFee = roomPrice * 0.10; 
+
+                roomTotal = (nights * roomPrice) + (extraHours * hourlyFee);
             }
         }
         const servicesTotal = data.selected_services.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        return { grandTotal: roomTotal + servicesTotal, roomTotal, servicesTotal, nights, extraHours };
+        
+        return { 
+            grandTotal: roomTotal + servicesTotal, 
+            roomTotal, 
+            servicesTotal, 
+            nights, 
+            extraHours,
+            lateHours
+        };
     }, [data.check_in_date, data.check_out_date, selectedRoom, data.selected_services]);
 
     useEffect(() => { setData('reservation_amount', priceDetails.grandTotal); }, [priceDetails.grandTotal]);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(reservationRoute.store.url(), { 
-            onSuccess: () => onClose(),
-            onError: (err) => {
-                if (err.check_in_date || err.check_out_date || err.room_id) setStep('calendar');
-            }
-        });
+        // Prevent submission if local error exists
+        if (localError) return;
+        post(reservationRoute.store.url(), { onSuccess: () => onClose() });
     };
 
     const startingDayIndex = startOfMonth(currentMonth).getDay();
     const activeReservations = selectedDate ? getReservationsForDate(selectedDate) : [];
+    
+    const sortedReservations = [...activeReservations].sort((a, b) => {
+        return parseISO(a.check_out_date).getTime() - parseISO(b.check_out_date).getTime();
+    });
+
     const availableTimeSlot = selectedDate ? getEarliestAvailableTime(selectedDate) : null;
     const isFullyBooked = selectedDate && availableTimeSlot === null;
 
-    const inputClass = (fieldName: keyof ReservationFormState) => `
-        w-full border rounded-lg p-2.5 bg-background transition-all outline-none text-sm
-        ${errors[fieldName] ? 'border-red-500 ring-2 ring-red-100' : 'border-border focus:ring-2 focus:ring-primary/20 focus:border-primary'}
-    `;
+    const gradientBg = "bg-gradient-to-br from-background to-muted/30";
+    const inputClass = "w-full px-4 py-3 bg-muted/30 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm";
+
+    // --- Responsive Step Indicator ---
+    const StepIndicator = ({ current, target, label }: { current: string, target: string, label: string }) => {
+        const isActive = current === target;
+        const isCompleted = (target === 'room' && current !== 'room') || (target === 'calendar' && current === 'form');
+        return (
+            <div className={`flex items-center gap-2 ${isActive ? 'text-primary' : isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>
+                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold border-2 transition-all ${isActive ? 'border-primary bg-primary/10' : isCompleted ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background'}`}>
+                    {isCompleted ? <CheckCircle size={12} className="sm:w-3.5 sm:h-3.5" /> : (target === 'room' ? 1 : target === 'calendar' ? 2 : 3)}
+                </div>
+                <span className={`text-xs sm:text-sm font-medium ${isActive && 'font-bold'}`}>{label}</span>
+            </div>
+        );
+    };
 
     return (
         <Transition show={isOpen} as={Fragment}>
             <Dialog as="div" className="relative z-50" onClose={onClose}>
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" />
-                
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" />
                 <div className="fixed inset-0 overflow-y-auto">
-                    <div className="flex min-h-full items-center justify-center p-0 sm:p-4">
-                        <Dialog.Panel className="w-full max-w-5xl rounded-none sm:rounded-2xl bg-card shadow-2xl flex flex-col md:flex-row overflow-hidden min-h-screen sm:min-h-[650px] border-x sm:border border-border">
+                    <div className="flex min-h-full items-center justify-center p-0 md:p-4">
+                        <Dialog.Panel className={`w-full md:max-w-6xl h-full md:h-[800px] md:rounded-3xl bg-card shadow-2xl flex flex-col lg:flex-row overflow-hidden ${gradientBg}`}>
                             
-                            {/* Main Content Area */}
-                            <div className="flex-1 flex flex-col h-full overflow-hidden">
-                                <div className="p-6 md:p-8 flex-1 overflow-y-auto">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <div>
-                                            <Dialog.Title className="text-2xl font-serif font-bold text-foreground">
-                                                {step === 'room' && 'Select a Room'}
-                                                {step === 'calendar' && 'Check Availability'}
-                                                {step === 'form' && 'Finalize Details'}
-                                            </Dialog.Title>
-                                            <div className="flex gap-1.5 mt-2">
-                                                <div className={`h-1 w-8 rounded-full ${step === 'room' ? 'bg-primary' : 'bg-muted'}`} />
-                                                <div className={`h-1 w-8 rounded-full ${step === 'calendar' ? 'bg-primary' : 'bg-muted'}`} />
-                                                <div className={`h-1 w-8 rounded-full ${step === 'form' ? 'bg-primary' : 'bg-muted'}`} />
-                                            </div>
+                            {/* --- Left Panel (Main Content) --- */}
+                            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+                                <div className="px-4 py-4 md:px-8 md:pt-8 md:pb-4 flex justify-between items-start z-10 bg-card/80 backdrop-blur-md sticky top-0 border-b border-border/50">
+                                    <div className="space-y-2 md:space-y-4">
+                                        <Dialog.Title className="text-xl md:text-3xl font-serif font-bold text-foreground tracking-tight">
+                                            {step === 'room' && 'Select Room'}
+                                            {step === 'calendar' && 'Select Dates'}
+                                            {step === 'form' && 'Guest Details'}
+                                        </Dialog.Title>
+                                        <div className="flex gap-3 md:gap-6">
+                                            <StepIndicator current={step} target="room" label="Room" />
+                                            <div className="h-px w-4 md:w-8 bg-border self-center"/>
+                                            <StepIndicator current={step} target="calendar" label="Date" />
+                                            <div className="h-px w-4 md:w-8 bg-border self-center"/>
+                                            <StepIndicator current={step} target="form" label="Confirm" />
                                         </div>
-                                        <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
-                                            <X className="text-muted-foreground size-6" />
-                                        </button>
                                     </div>
+                                    <button onClick={onClose} className="p-2 bg-muted/50 hover:bg-destructive/10 hover:text-destructive rounded-full transition-all">
+                                        <X size={20} />
+                                    </button>
+                                </div>
 
-                                    {/* Error Banner */}
+                                <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin scrollbar-thumb-primary/10">
                                     {Object.keys(errors).length > 0 && (
-                                        <div className="mb-6 bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex items-start gap-3 animate-in fade-in zoom-in duration-200">
-                                            <AlertCircle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
-                                            <div className="text-sm">
-                                                <h3 className="font-bold text-destructive">Submission Error</h3>
-                                                <ul className="list-disc list-inside mt-1 text-destructive/80">
-                                                    {Object.values(errors).map((err, i) => <li key={i}>{err}</li>)}
-                                                </ul>
+                                        <div className="mb-6 p-3 bg-destructive/5 border border-destructive/20 rounded-xl flex gap-3 animate-in fade-in slide-in-from-top-2">
+                                            <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                                            <div className="space-y-1">
+                                                <h4 className="text-sm font-semibold text-destructive">Error</h4>
+                                                <p className="text-xs text-destructive/80">Please check the fields below.</p>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* STEP 1: ROOM SELECTION */}
+                                    {/* --- STEP 1: ROOMS --- */}
                                     {step === 'room' && (
-                                        <div className="animate-in slide-in-from-bottom-4 duration-300">
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {rooms.map(room => (
-                                                    <div 
-                                                        key={room.id}
-                                                        onClick={() => { setData('room_id', room.id.toString()); setStep('calendar'); }}
-                                                        className="group p-5 border border-border rounded-2xl hover:border-primary hover:shadow-xl cursor-pointer transition-all bg-muted/30 hover:bg-card relative overflow-hidden"
-                                                    >
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-lg text-foreground">{room.room_name}</div>
-                                                            <Bed className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                                                        </div>
-                                                        <div className="text-[10px] font-bold text-primary bg-primary/10 inline-block px-2 py-0.5 rounded uppercase tracking-widest mb-3">
-                                                            {room.room_category?.room_category}
-                                                        </div>
-                                                        <div className="text-sm text-muted-foreground">
-                                                            Max {room.max_extra_person} guests • <span className="font-bold text-foreground">₱{room.room_category?.price.toLocaleString()}</span>
-                                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500 pb-20 lg:pb-0">
+                                            {rooms.map(room => (
+                                                <div 
+                                                    key={room.id}
+                                                    onClick={() => { setData('room_id', room.id.toString()); setStep('calendar'); }}
+                                                    className="group relative bg-card border border-border/60 hover:border-primary/50 rounded-2xl p-5 cursor-pointer transition-all hover:shadow-lg active:scale-95 md:active:scale-100 flex flex-col"
+                                                >
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <div className="p-2.5 bg-primary/5 group-hover:bg-primary/10 rounded-xl text-primary"><Bed size={20} /></div>
+                                                        <span className="px-2.5 py-1 bg-muted rounded-full text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{room.room_category?.room_category}</span>
                                                     </div>
-                                                ))}
-                                            </div>
+                                                    <h3 className="text-lg font-bold text-foreground mb-1">{room.room_name}</h3>
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+                                                        <Users size={14} /> <span>Max {room.max_extra_person} Guests</span>
+                                                    </div>
+                                                    <div className="pt-3 border-t border-border/50 flex items-end justify-between mt-auto">
+                                                        <div>
+                                                            <p className="text-[10px] text-muted-foreground uppercase font-bold">From</p>
+                                                            <p className="text-lg font-bold text-foreground">₱{room.room_category?.price.toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary"><ChevronRight size={16} /></div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
 
-                                    {/* STEP 2: CALENDAR */}
+                                    {/* --- STEP 2: CALENDAR --- */}
                                     {step === 'calendar' && (
-                                        <div className="animate-in slide-in-from-right-4 duration-300 flex flex-col h-full">
+                                        <div className="flex flex-col h-full animate-in slide-in-from-right-8 duration-500 pb-4">
                                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                                                <button onClick={() => setStep('room')} className="w-full sm:w-auto text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 font-bold uppercase tracking-wider transition-colors">
-                                                    <ChevronLeft className="size-4"/> Change Room
+                                                <button onClick={() => setStep('room')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors p-2 -ml-2 rounded-lg hover:bg-muted self-start sm:self-auto">
+                                                    <ChevronLeft size={16} /> <span className="font-medium">Change Room</span>
                                                 </button>
-                                                <div className="flex items-center gap-4 bg-muted px-4 py-2 rounded-xl border border-border">
-                                                    <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 hover:bg-card rounded-md transition-colors"><ChevronLeft className="size-4"/></button>
-                                                    <span className="font-serif font-bold text-sm w-32 text-center uppercase tracking-widest">{format(currentMonth, 'MMMM yyyy')}</span>
-                                                    <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 hover:bg-card rounded-md transition-colors"><ChevronRight className="size-4"/></button>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-7 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-tighter mb-2">
-                                                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
-                                            </div>
-                                            <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-6">
-                                                {Array.from({ length: startingDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
-                                                {daysInMonth.map((day) => {
-                                                    const isPast = isBefore(day, startOfToday());
-                                                    const hasRes = getReservationsForDate(day).length > 0;
-                                                    const isSelected = selectedDate && isSameDay(day, selectedDate);
-                                                    return (
-                                                        <button
-                                                            key={day.toString()}
-                                                            type="button"
-                                                            disabled={isPast}
-                                                            onClick={() => { setSelectedDate(day); clearErrors(); }}
-                                                            className={`
-                                                                aspect-square sm:h-12 rounded-xl flex flex-col items-center justify-center text-sm font-bold transition-all relative border
-                                                                ${isPast ? 'opacity-20 cursor-not-allowed bg-muted' : 'hover:border-primary'}
-                                                                ${isSelected ? 'ring-4 ring-primary/10 border-primary bg-primary text-primary-foreground' : 'bg-muted/20 border-border text-foreground'}
-                                                            `}
-                                                        >
-                                                            {format(day, 'd')}
-                                                            {hasRes && !isSelected && <div className="mt-1 w-1 h-1 rounded-full bg-accent" />}
-                                                        </button>
-                                                    )
-                                                })}
-                                            </div>
-
-                                            <div className="mt-auto bg-muted/50 rounded-2xl p-5 border border-border">
-                                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
-                                                    Availability for: {selectedDate ? format(selectedDate, 'EEEE, MMMM do') : 'Select a date'}
-                                                </h4>
-                                                {selectedDate ? (
-                                                    <div className="space-y-4">
-                                                        <div className={`flex items-center gap-3 text-sm font-bold ${isFullyBooked ? 'text-destructive' : 'text-primary'}`}>
-                                                            {isFullyBooked ? <XCircle className="size-5"/> : <CheckCircle className="size-5"/>}
-                                                            <span>{isFullyBooked ? 'Fully Booked' : `Check-in from ${format(availableTimeSlot!, 'h:mm a')}`}</span>
-                                                        </div>
-                                                        {activeReservations.length > 0 && (
-                                                            <div className="bg-card p-3 rounded-xl border border-border overflow-hidden">
-                                                                <p className="text-[10px] text-muted-foreground font-bold uppercase mb-2">Occupied Periods</p>
-                                                                <div className="max-h-24 overflow-y-auto space-y-1 pr-2 scrollbar-thin">
-                                                                    {activeReservations.map(res => (
-                                                                        <div key={res.id} className="text-[11px] flex justify-between text-muted-foreground">
-                                                                            <span className="font-mono">{format(parseISO(res.check_in_date), 'h:mm a')} - {format(parseISO(res.check_out_date), 'h:mm a')}</span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                                {!isFullyBooked && <div className="mt-2 flex items-center gap-1.5 text-[10px] text-accent font-bold italic"><Info size={12}/> +{BUFFER_HOURS}h cleaning buffer</div>}
-                                                            </div>
-                                                        )}
-                                                        <Button 
-                                                            onClick={confirmDateSelection}
-                                                            disabled={isFullyBooked}
-                                                            className="w-full h-12 bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 uppercase tracking-widest"
-                                                        >
-                                                            {isFullyBooked ? 'No Vacancy' : 'Confirm Date'}
-                                                        </Button>
-                                                    </div>
-                                                ) : <div className="text-sm text-muted-foreground italic text-center py-4">Click a date on the calendar to see available slots.</div>}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* STEP 3: DETAILS FORM */}
-                                    {step === 'form' && (
-                                        <div className="animate-in slide-in-from-right-4 duration-300">
-                                            <div className="flex items-center justify-between bg-primary/10 p-4 rounded-2xl border border-primary/20 mb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary text-primary-foreground rounded-lg"><Bed size={18}/></div>
-                                                    <div>
-                                                        <p className="text-[10px] text-primary font-bold uppercase tracking-widest leading-none mb-1">Room Selection</p>
-                                                        <p className="font-serif font-bold text-foreground">{selectedRoom?.room_name}</p>
+                                                <div className="flex items-center justify-between w-full sm:w-auto gap-4 bg-card border border-border rounded-xl p-1.5 pl-4 shadow-sm">
+                                                    <span className="font-serif text-base font-bold text-foreground flex-1 text-center sm:min-w-[140px]">
+                                                        {format(currentMonth, 'MMMM yyyy')}
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-muted rounded-lg text-foreground"><ChevronLeft size={16}/></button>
+                                                        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-muted rounded-lg text-foreground"><ChevronRight size={16}/></button>
                                                     </div>
                                                 </div>
-                                                <button type="button" onClick={() => setStep('calendar')} className="text-xs font-bold text-primary hover:underline uppercase tracking-tighter">Change</button>
                                             </div>
 
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Guest Name</label>
-                                                    <input className={inputClass('guest_name')} placeholder="Full Name" value={data.guest_name} onChange={e => setData('guest_name', e.target.value)} />
+                                            <div className="bg-card rounded-2xl border border-border p-4 md:p-6 shadow-sm flex-1 flex flex-col">
+                                                <div className="grid grid-cols-7 mb-2">
+                                                    {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+                                                        <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-muted-foreground/50 uppercase py-2">{d}</div>
+                                                    ))}
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Contact Number</label>
-                                                    <input className={inputClass('contact_number')} placeholder="09xxxxxxxxx" type="tel" maxLength={11} value={data.contact_number} onChange={e => setData('contact_number', e.target.value.replace(/\D/g, ''))} />
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Check-in</label>
-                                                    <input type="datetime-local" className={inputClass('check_in_date')} value={data.check_in_date} onChange={e => setData('check_in_date', e.target.value)} />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Check-out</label>
-                                                    <input type="datetime-local" className={inputClass('check_out_date')} value={data.check_out_date} onChange={e => setData('check_out_date', e.target.value)} />
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Total Guests</label>
-                                                    <input type="number" className={inputClass('total_guest')} value={data.total_guest} onChange={e => setData('total_guest', parseInt(e.target.value))} min={1} />
-                                                </div>
-                                                {isAdminOrStaff && (
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Booking Status</label>
-                                                        <select className={inputClass('status')} value={data.status} onChange={e => setData('status', e.target.value)}>
-                                                            <option value="pending">Pending</option>
-                                                            <option value="confirmed">Confirmed</option>
-                                                            <option value="cancelled">Cancelled</option>
-                                                        </select>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Additional Services</label>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
-                                                    {services.map(svc => {
-                                                        const selected = data.selected_services.find(s => s.id === svc.id);
-                                                        const qty = selected?.quantity || 0;
+                                                <div className="grid grid-cols-7 gap-1 md:gap-3 flex-1">
+                                                    {Array.from({ length: startingDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
+                                                    {daysInMonth.map((day) => {
+                                                        const isPast = isBefore(day, startOfToday());
+                                                        const hasRes = getReservationsForDate(day).length > 0;
+                                                        const isSelected = selectedDate && isSameDay(day, selectedDate);
                                                         return (
-                                                            <div key={svc.id} className={`p-3 border rounded-xl flex justify-between items-center transition-all ${qty > 0 ? 'border-primary bg-primary/5' : 'border-border'}`}>
-                                                                <div>
-                                                                    <p className="text-xs font-bold text-foreground">{svc.services_name}</p>
-                                                                    <p className="text-[10px] text-muted-foreground font-mono">₱{svc.services_price}</p>
-                                                                </div>
-                                                                <div className="flex items-center gap-3 bg-card p-1 rounded-lg border border-border">
-                                                                    <button type="button" onClick={() => updateServiceQuantity(svc.id, -1)} disabled={qty === 0} className="p-1 hover:text-destructive disabled:opacity-20"><Minus size={12}/></button>
-                                                                    <span className="text-xs font-bold w-4 text-center">{qty}</span>
-                                                                    <button type="button" onClick={() => updateServiceQuantity(svc.id, 1)} className="p-1 hover:text-primary"><Plus size={12}/></button>
-                                                                </div>
-                                                            </div>
+                                                            <button
+                                                                key={day.toString()}
+                                                                disabled={isPast}
+                                                                onClick={() => { setSelectedDate(day); clearErrors(); }}
+                                                                className={`
+                                                                    relative rounded-lg md:rounded-xl flex flex-col items-center justify-center transition-all duration-200 border
+                                                                    h-10 sm:h-16 md:h-auto md:min-h-[4rem]
+                                                                    ${isPast ? 'opacity-30 cursor-not-allowed border-transparent' : 'hover:border-primary/50'}
+                                                                    ${isSelected ? 'bg-primary text-primary-foreground border-primary shadow-lg scale-105 z-10' : 'bg-background border-border text-foreground'}
+                                                                `}
+                                                            >
+                                                                <span className={`text-xs sm:text-sm font-bold`}>{format(day, 'd')}</span>
+                                                                {hasRes && !isSelected && (
+                                                                    <div className="mt-0.5 sm:mt-1 w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-orange-400" />
+                                                                )}
+                                                            </button>
                                                         )
                                                     })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* --- STEP 3: FORM --- */}
+                                    {step === 'form' && (
+                                        <div className="animate-in slide-in-from-right-8 duration-500 max-w-3xl mx-auto w-full pb-20 lg:pb-0">
+                                            <div className="bg-card border border-border rounded-2xl p-4 md:p-6 mb-6 flex items-center justify-between shadow-sm">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="hidden sm:flex w-12 h-12 bg-primary/10 rounded-xl items-center justify-center text-primary"><Bed size={24} /></div>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Booking For</p>
+                                                        <h3 className="text-lg md:text-xl font-serif font-bold text-foreground">{selectedRoom?.room_name}</h3>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => setStep('room')} className="text-xs font-bold text-primary border-b border-primary/20 pb-0.5">Change</button>
+                                            </div>
+
+                                            <div className="grid gap-6 md:gap-8">
+                                                {/* Guest Info */}
+                                                <div className="space-y-4">
+                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><User size={14} /> Guest Information</h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-medium text-foreground ml-1">Full Name</label>
+                                                            <input className={`${inputClass} ${errors.guest_name && 'border-destructive'}`} placeholder="John Doe" value={data.guest_name} onChange={e => setData('guest_name', e.target.value)} required />
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-medium text-foreground ml-1">Phone Number</label>
+                                                            <input className={`${inputClass} ${errors.contact_number && 'border-destructive'}`} placeholder="0912 345 6789" maxLength={11} value={data.contact_number} onChange={e => setData('contact_number', e.target.value.replace(/\D/g, ''))} required />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Stay Details */}
+                                                <div className="space-y-4">
+                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><Calendar size={14} /> Stay Details</h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-medium text-foreground ml-1">Check-in</label>
+                                                            {/* Update input class based on localError */}
+                                                            <input type="datetime-local" className={`${inputClass} ${(errors.check_in_date || localError) && 'border-destructive bg-destructive/5'}`} value={data.check_in_date} onChange={e => setData('check_in_date', e.target.value)} />
+                                                            {/* Show Local Error or Server Error */}
+                                                            {(errors.check_in_date || localError) && (
+                                                                <p className="text-[10px] font-bold text-destructive flex items-center gap-1">
+                                                                    <XCircle size={10}/> {localError || errors.check_in_date}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-medium text-foreground ml-1">Check-out</label>
+                                                            <input type="datetime-local" className={`${inputClass} ${errors.check_out_date && 'border-destructive'}`} value={data.check_out_date} onChange={e => setData('check_out_date', e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-medium text-foreground ml-1">Total Guests</label>
+                                                            <div className="flex items-center gap-4 bg-muted/30 border border-border rounded-xl p-2 w-full sm:w-fit">
+                                                                <button onClick={() => setData('total_guest', Math.max(1, data.total_guest - 1))} className="p-2 hover:bg-background rounded-lg shadow-sm"><Minus size={14}/></button>
+                                                                <span className="w-8 text-center font-bold text-sm">{data.total_guest}</span>
+                                                                <button onClick={() => setData('total_guest', data.total_guest + 1)} className="p-2 hover:bg-background rounded-lg shadow-sm"><Plus size={14}/></button>
+                                                            </div>
+                                                        </div>
+                                                        {isAdminOrStaff && (
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-xs font-medium text-foreground ml-1">Status</label>
+                                                                <select className={inputClass} value={data.status} onChange={e => setData('status', e.target.value)}>
+                                                                    <option value="pending">Pending</option>
+                                                                    <option value="confirmed">Confirmed</option>
+                                                                    <option value="cancelled">Cancelled</option>
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Extras */}
+                                                <div className="space-y-4">
+                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><Plus size={14} /> Extras</h4>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {services.map(svc => {
+                                                            const selected = data.selected_services.find(s => s.id === svc.id);
+                                                            const qty = selected?.quantity || 0;
+                                                            return (
+                                                                <div key={svc.id} className={`p-3 border rounded-xl flex justify-between items-center ${qty > 0 ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}>
+                                                                    <div>
+                                                                        <p className="font-medium text-sm text-foreground">{svc.services_name}</p>
+                                                                        <p className="text-[10px] text-muted-foreground font-mono">₱{svc.services_price}</p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 bg-background rounded-lg border border-border p-1">
+                                                                        <button type="button" onClick={() => updateServiceQuantity(svc.id, -1)} disabled={qty === 0} className="w-6 h-6 flex items-center justify-center hover:bg-muted rounded text-foreground disabled:opacity-30"><Minus size={10}/></button>
+                                                                        <span className="w-4 text-center text-xs font-bold">{qty}</span>
+                                                                        <button type="button" onClick={() => updateServiceQuantity(svc.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-muted rounded text-primary"><Plus size={10}/></button>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -483,40 +551,107 @@ export default function AddReservation({
                                 </div>
                             </div>
 
-                            {/* Sidebar / Estimate Section */}
-                            {step === 'form' && (
-                                <div className="w-full md:w-80 bg-muted/50 p-6 md:p-8 border-t md:border-t-0 md:border-l border-border flex flex-col justify-between">
-                                    <div className="space-y-6">
-                                        <h3 className="text-lg font-serif font-bold text-foreground flex items-center gap-2">
-                                            <Info size={18} className="text-primary" /> Cost Summary
-                                        </h3>
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between text-xs text-muted-foreground font-bold uppercase tracking-widest">
-                                                <span>Room ({priceDetails.nights}n {priceDetails.extraHours > 0 && `+ ${priceDetails.extraHours}h`})</span>
-                                                <span className="text-foreground">₱{priceDetails.roomTotal.toLocaleString()}</span>
+                            {/* --- Right Panel: Sidebar / Summary --- */}
+                            <div className="w-full lg:w-[350px] bg-muted/30 border-t lg:border-t-0 lg:border-l border-border flex flex-col flex-shrink-0">
+                                {step === 'calendar' ? (
+                                    <div className="p-4 md:p-8 flex flex-col h-full">
+                                        <h3 className="font-serif text-lg md:text-xl font-bold mb-4 text-foreground">Selected Date</h3>
+                                        {selectedDate ? (
+                                            <div className="space-y-4 md:space-y-6 flex-1">
+                                                <div className="bg-card p-4 md:p-6 rounded-2xl border border-border shadow-sm">
+                                                    <div className="text-3xl md:text-4xl font-bold text-primary mb-1">{format(selectedDate, 'd')}</div>
+                                                    <div className="text-base md:text-lg font-medium text-muted-foreground">{format(selectedDate, 'EEEE')}</div>
+                                                    <div className="text-xs md:text-sm text-muted-foreground">{format(selectedDate, 'MMMM yyyy')}</div>
+                                                </div>
+                                                <div className={`p-4 rounded-xl border flex items-start gap-3 ${isFullyBooked ? 'bg-destructive/5 border-destructive/20' : 'bg-primary/5 border-primary/20'}`}>
+                                                    {isFullyBooked ? <XCircle className="w-5 h-5 text-destructive mt-0.5" /> : <CheckCircle className="w-5 h-5 text-primary mt-0.5" />}
+                                                    <div>
+                                                        <p className={`font-bold text-sm ${isFullyBooked ? 'text-destructive' : 'text-primary'}`}>{isFullyBooked ? 'Fully Booked' : 'Available'}</p>
+                                                        {!isFullyBooked && (<p className="text-[10px] md:text-xs text-muted-foreground mt-1">Check-in allowed from {format(availableTimeSlot!, 'h:mm a')}</p>)}
+                                                    </div>
+                                                </div>
+                                                {sortedReservations.length > 0 && (
+                                                    <div className="space-y-3">
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Day Schedule</p>
+                                                        <div className="bg-background rounded-xl border border-border p-3 md:p-4 space-y-3 max-h-[200px] md:max-h-[300px] overflow-y-auto">
+                                                            {sortedReservations.map(res => {
+                                                                const start = parseISO(res.check_in_date);
+                                                                const end = parseISO(res.check_out_date);
+                                                                const isStart = isSameDay(start, selectedDate);
+                                                                const isEnd = isSameDay(end, selectedDate);
+                                                                return (
+                                                                    <div key={res.id} className="relative pl-3 border-l-2 border-border text-xs">
+                                                                        {isStart && isEnd ? (
+                                                                            <div className="space-y-0.5"><div className="font-medium text-blue-500">In: {format(start, 'h:mm a')}</div><div className="font-medium text-orange-500">Out: {format(end, 'h:mm a')}</div></div>
+                                                                        ) : isStart ? (
+                                                                            <div className="font-medium text-blue-500">Check-in: {format(start, 'h:mm a')}</div>
+                                                                        ) : isEnd ? (
+                                                                            <div className="font-medium text-orange-500">Check-out: {format(end, 'h:mm a')}</div>
+                                                                        ) : (
+                                                                            <div className="text-muted-foreground italic">Full Day</div>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                        <p className="text-[10px] text-muted-foreground flex items-center gap-1.5"><Info size={10} /> {BUFFER_HOURS}h cleaning buffer</p>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="flex justify-between text-xs text-muted-foreground font-bold uppercase tracking-widest">
-                                                <span>Services</span>
-                                                <span className="text-foreground">₱{priceDetails.servicesTotal.toLocaleString()}</span>
+                                        ) : (
+                                            <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground p-4 opacity-60">
+                                                <Calendar size={40} strokeWidth={1} className="mb-3" />
+                                                <p className="text-sm">Select a date on the calendar.</p>
                                             </div>
-                                            <div className="pt-4 border-t border-border flex justify-between items-end">
-                                                <span className="text-sm font-bold text-primary uppercase">Estimated Total</span>
-                                                <span className="text-3xl font-serif font-bold text-primary leading-none">₱{priceDetails.grandTotal.toLocaleString()}</span>
-                                            </div>
+                                        )}
+                                        <div className="pt-4 md:pt-6 mt-auto border-t border-border">
+                                            <Button onClick={confirmDateSelection} disabled={!selectedDate || isFullyBooked} className="w-full h-12 md:h-14 text-sm md:text-base bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 rounded-xl">
+                                                {isFullyBooked ? 'Unavailable' : 'Confirm Date'}
+                                            </Button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3 mt-10">
-                                        <Button variant="outline" onClick={() => setStep('calendar')} className="flex-1 h-12 border-border font-bold uppercase text-[10px] tracking-widest">Back</Button>
-                                        <Button 
-                                            onClick={submit} 
-                                            disabled={processing} 
-                                            className="flex-1 h-12 bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 uppercase tracking-widest"
-                                        >
-                                            {processing ? <Loader2 className="animate-spin size-4" /> : 'Confirm'}
-                                        </Button>
+                                ) : step === 'form' ? (
+                                    <div className="p-4 md:p-8 flex flex-col h-full bg-card shadow-inner lg:shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)] z-20">
+                                        <h3 className="font-serif text-lg md:text-xl font-bold mb-4 md:mb-6 text-foreground flex items-center gap-2"><CreditCard size={18} /> Payment</h3>
+                                        <div className="space-y-4 md:space-y-6 flex-1">
+                                            <div className="space-y-2 md:space-y-3">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-muted-foreground">Room Charge</span>
+                                                    <span className="font-medium text-foreground">₱{priceDetails.roomTotal.toLocaleString()}</span>
+                                                </div>
+                                                <div className="pl-3 text-xs text-muted-foreground border-l-2 border-muted space-y-1">
+                                                    <div className="flex justify-between"><span>Duration</span><span>{priceDetails.nights} Night(s)</span></div>
+                                                    {priceDetails.lateHours > 0 && (<div className="flex justify-between text-orange-500"><span>Late Fee ({priceDetails.lateHours}h)</span><span>+₱{(priceDetails.lateHours * (selectedRoom?.room_category?.price ?? 0) * 0.10).toLocaleString()}</span></div>)}
+                                                </div>
+                                            </div>
+                                            {priceDetails.servicesTotal > 0 && (
+                                                <div className="flex justify-between items-center text-sm pt-3 border-t border-border border-dashed">
+                                                    <span className="text-muted-foreground">Add-on Services</span>
+                                                    <span className="font-medium text-foreground">₱{priceDetails.servicesTotal.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            <div className="bg-primary/5 rounded-xl p-3 md:p-4 mt-auto border border-primary/10">
+                                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Total Due</p>
+                                                <p className="text-2xl md:text-3xl font-serif font-bold text-primary">₱{priceDetails.grandTotal.toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="pt-4 md:pt-6 mt-auto flex gap-3">
+                                            <Button variant="outline" onClick={() => setStep('calendar')} className="h-12 md:h-14 px-4 md:px-6 rounded-xl border-border font-bold">Back</Button>
+                                            {/* Disable button if localError is present */}
+                                            <Button onClick={submit} disabled={processing || !!localError} className="flex-1 h-12 md:h-14 text-sm md:text-base bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 rounded-xl">
+                                                {processing ? <Loader2 className="animate-spin size-5" /> : 'Confirm Booking'}
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                ) : (
+                                    <div className="p-8 flex flex-col h-full justify-center items-center text-center text-muted-foreground hidden lg:flex">
+                                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4"><Bed size={32} strokeWidth={1.5} className="opacity-50" /></div>
+                                        <h3 className="text-lg font-bold text-foreground mb-2">Select a Room</h3>
+                                        <p className="text-sm max-w-[200px]">Choose a room from the list.</p>
+                                    </div>
+                                )}
+                            </div>
+
                         </Dialog.Panel>
                     </div>
                 </div>
