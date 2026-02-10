@@ -19,24 +19,31 @@ class ReservationServices
     protected function checkAvailability($roomId, $checkIn, $checkOut, $excludeId = null)
     {
         $newStart = Carbon::parse($checkIn);
-        $newEnd   = Carbon::parse($checkOut)->addHours(self::BUFFER_HOURS);
+        
+        // The new reservation effectively ends at CheckOut + Buffer
+        $newEnd = Carbon::parse($checkOut)->addHours(self::BUFFER_HOURS);
 
-        // FIX 1: Add 'checked_out' here. 
-        // A checked-out room is still "occupied" by the cleaning buffer.
+        // FIX FOR POSTGRESQL:
+        // Instead of doing "check_out + 3 hours > new_start" in SQL (which breaks),
+        // we do "check_out > new_start - 3 hours" in PHP.
+        // This is mathematically identical but works on ALL databases.
+        $thresholdTime = $newStart->copy()->subHours(self::BUFFER_HOURS);
+
         $activeStatuses = [
             ReservationEnum::Pending->value,
             ReservationEnum::Confirmed->value,
             ReservationEnum::CheckedIn->value,
-            ReservationEnum::CheckedOut->value, // <--- CRITICAL ADDITION
+            ReservationEnum::CheckedOut->value,
         ];
 
         $conflict = Reservation::where('room_id', $roomId)
             ->whereIn('status', $activeStatuses)
-            ->where(function ($query) use ($newStart, $newEnd) {
-                // Logic: (StartA < EndB) AND (EndA > StartB)
-                // Existing End Time = check_out_date + 3 Hours Buffer
-                $query->whereRaw('check_in_date < ?', [$newEnd])
-                      ->whereRaw('DATE_ADD(check_out_date, INTERVAL ? HOUR) > ?', [self::BUFFER_HOURS, $newStart]);
+            ->where(function ($query) use ($newEnd, $thresholdTime) {
+                // 1. Existing Start < New End (with buffer)
+                $query->where('check_in_date', '<', $newEnd)
+                // 2. Existing End > Threshold (New Start - Buffer)
+                // This replaces the raw DATE_ADD SQL
+                      ->where('check_out_date', '>', $thresholdTime);
             })
             ->when($excludeId, function ($query, $id) {
                 $query->where('id', '!=', $id);
