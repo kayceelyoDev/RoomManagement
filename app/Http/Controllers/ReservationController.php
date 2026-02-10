@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Enum\ReservationEnum;
+use App\enum\ReservationEnum;
 use App\Http\Requests\ReservationRequest;
 use App\Models\Reservation;
 use App\Models\Rooms;
