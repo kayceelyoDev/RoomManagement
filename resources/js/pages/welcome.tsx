@@ -56,7 +56,15 @@ export default function Welcome({ canRegister = true, rooms = [] }: WelcomeProps
             setIsMobileMenuOpen(false); // Close menu first
             // Small timeout to allow menu to close before scrolling
             setTimeout(() => {
-                element.scrollIntoView({ behavior: 'smooth' });
+                // Adjustment for fixed header offset
+                const headerOffset = 80; 
+                const elementPosition = element.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.scrollY - headerOffset;
+        
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: "smooth"
+                });
             }, 300);
         }
     };
@@ -97,16 +105,16 @@ export default function Welcome({ canRegister = true, rooms = [] }: WelcomeProps
             
             <div className="min-h-screen bg-white font-sans text-[#2C3930] relative overflow-x-hidden">
                 
-                {/* --- NAVIGATION --- */}
-                <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-[#2C3930]/5 transition-all">
+                {/* --- NAVIGATION (UPDATED: Fixed Position) --- */}
+                {/* Changed 'sticky' to 'fixed', added 'top-0 left-0 right-0' */}
+                <header className="fixed top-0 left-0 right-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-[#2C3930]/5 transition-all">
                     <div className="px-6 py-4 flex items-center justify-between max-w-7xl mx-auto relative z-50">
                         
-                        {/* Logo - UPDATED: Removed circle, border, and shadow */}
+                        {/* Logo */}
                         <a href="#home" onClick={(e) => scrollToSection(e, 'home')} className="block hover:opacity-80 transition z-50 relative">
                             <img 
                                 src="/img/logo.jpg" 
                                 alt="Estaca Bay Logo" 
-                                // Changed className to remove rounded-full and border
                                 className="h-8 w-auto md:h-12 object-contain" 
                             />
                         </a>
@@ -217,7 +225,8 @@ export default function Welcome({ canRegister = true, rooms = [] }: WelcomeProps
                 </header>
 
                 {/* --- HERO SECTION --- */}
-                <section id="home" className="bg-[#FFFDE1] px-6 py-20 lg:py-32 relative overflow-hidden">
+                {/* Added pt-32 (padding-top) to compensate for fixed header */}
+                <section id="home" className="bg-[#FFFDE1] px-6 pt-32 pb-20 lg:py-40 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-[#D8E983] opacity-20 rounded-full blur-3xl pointer-events-none animate-float-slow transform-gpu"></div>
                     <div className="absolute bottom-20 left-10 w-64 h-64 bg-[#628141] opacity-10 rounded-full blur-3xl pointer-events-none animate-float transform-gpu"></div>
 
@@ -409,7 +418,7 @@ export default function Welcome({ canRegister = true, rooms = [] }: WelcomeProps
                             {[
                                 { icon: Phone, title: "Call Us", text: "0920 281 6722" },
                                 { icon: Facebook, title: "Facebook", text: "Estaca Bay Resort" },
-                                { icon: MapPin, title: "Location", text: "KM 21 Estaca, Cebu" },
+                                { icon: MapPin, title: "Location", text: "Estaca, Cebu" },
                                 { icon: Mail, title: "Email", text: "estacabay@gmail.com" },
                             ].map((item, idx) => (
                                 <div key={idx} className="bg-white p-8 rounded-2xl flex flex-col items-center gap-4 shadow-lg hover:shadow-xl hover:-translate-y-1 transition duration-300 border border-[#2C3930]/5 group">

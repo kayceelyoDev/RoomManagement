@@ -145,7 +145,7 @@ export default function CreateUserModal({ isOpen, onClose }: Props) {
                                                 >
                                                     <option value="staff">Staff (Limited Access)</option>
                                                     <option value="admin">Admin (Full Access)</option>
-                                                    <option value="supperadmin">Super Admin (Owner)</option>
+                                                    <option value="supperAdmin">Super Admin (Owner)</option>
                                                 </select>
                                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-[10px]">▼</div>
                                             </div>
