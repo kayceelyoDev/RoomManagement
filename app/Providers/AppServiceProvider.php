@@ -81,6 +81,15 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('acces-guest', function (User $user) {
             return $user->role === roles::GUEST;
         });
+
+        Password::defaults(function () {
+        return Password::min(8)
+            ->letters()
+            ->mixedCase()
+            ->numbers()
+            ->symbols()
+            ->uncompromised();
+        });
     }
 
     protected function configureDefaults(): void
