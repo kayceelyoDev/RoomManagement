@@ -14,7 +14,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Security Gate (Throws 403 if false)
+        
         Gate::authorize('manage-user');
 
         $search = $request->input('search');
