@@ -141,9 +141,9 @@ class GuestPage extends Controller
                 $reservation->update(['status' => ReservationEnum::Cancelled]);
             });
 
-            if ($reservation->user && $reservation->user->email) {
+            if ($reservation->user && $reservation->guest_email) {
                 try {
-                    Mail::to($reservation->user->email)->queue(new ReservationCancellationMain($reservation));
+                    Mail::to($reservation->guest_email)->queue(new ReservationCancellationMain($reservation));
                 } catch (\Throwable $e) {
                     Log::error("Mail queue error for Res #{$reservation->id}: " . $e->getMessage());
                 }

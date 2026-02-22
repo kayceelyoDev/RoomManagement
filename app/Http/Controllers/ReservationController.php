@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enum\ReservationEnum;
+use App\Enum\roles;
 use App\Http\Requests\ReservationRequest;
 use App\Models\Reservation;
 use App\Models\Rooms;
@@ -90,9 +91,14 @@ class ReservationController extends Controller
     public function store(ReservationRequest $request, ReservationServices $services)
     {
         $data = $request->validated();
-        $data['user_id'] = Auth::id();
+        $data['user_id'] = Auth::id(); // Records who made the booking in the system
 
-        // Service handles conflict checks and logic
+        // If a guest is using the app, overwrite the email with their secure account email
+        if (Auth::user()->role === roles::GUEST) {
+            $data['guest_email'] = Auth::user()->email;
+        }
+
+        // Pass the data to the service
         $services->createReservation($data);
 
         return redirect()->route('reservation.index')->with('success', 'Reservation created successfully.');

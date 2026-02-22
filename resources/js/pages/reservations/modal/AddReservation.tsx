@@ -2,13 +2,13 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import {
-    X, Minus, Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, 
+    X, Minus, Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle,
     Loader2, AlertCircle, Info, Bed, Clock, Calendar, Users, Phone, User, CreditCard
 } from 'lucide-react';
 import reservationRoute from '@/routes/reservation';
-import { 
-    format, subMonths, startOfMonth, endOfMonth, 
-    eachDayOfInterval, isSameDay, startOfToday, addHours, startOfDay, 
+import {
+    format, subMonths, startOfMonth, endOfMonth,
+    eachDayOfInterval, isSameDay, startOfToday, addHours, startOfDay,
     isBefore, parseISO, areIntervalsOverlapping,
     differenceInCalendarDays, differenceInHours, isAfter
 } from 'date-fns';
@@ -24,16 +24,16 @@ export interface Service {
 export interface Room {
     id: number;
     room_name: string;
-    max_extra_person: number; 
-    room_category?: { 
+    max_extra_person: number;
+    room_category?: {
         id: number;
         room_category: string;
         price: number;
         room_capacity: number;
     };
-    reservations?: { 
+    reservations?: {
         id: number;
-        check_in_date: string; 
+        check_in_date: string;
         check_out_date: string;
         status: string;
     }[];
@@ -49,6 +49,7 @@ interface ReservationFormState {
     room_id: string;
     guest_name: string;
     contact_number: string;
+    guest_email: string; // <-- Just keep this
     total_guest: number;
     check_in_date: string;
     check_out_date: string;
@@ -66,22 +67,25 @@ interface Props {
     role?: 'admin' | 'staff' | 'guest' | 'super_admin';
 }
 
-const BUFFER_HOURS = 3; 
+const BUFFER_HOURS = 3;
 
-export default function AddReservation({ 
-    isOpen, onClose, rooms = [], services = [], 
-    preSelectedRoomId = null, role = 'staff' 
+export default function AddReservation({
+    isOpen, onClose, rooms = [], services = [],
+    preSelectedRoomId = null, role = 'staff'
 }: Props) {
-    
+
     const [step, setStep] = useState<'room' | 'calendar' | 'form'>('room');
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [localError, setLocalError] = useState<string | null>(null);
 
+    const isAdminOrStaff = ['admin', 'super_admin', 'staff'].includes(role || 'staff');
+
     const { data, setData, post, processing, reset, errors, clearErrors } = useForm<ReservationFormState>({
         room_id: preSelectedRoomId ? preSelectedRoomId.toString() : '',
         guest_name: '',
         contact_number: '',
+        guest_email: '', // <-- Add this
         total_guest: 1,
         check_in_date: '',
         check_out_date: '',
@@ -91,7 +95,6 @@ export default function AddReservation({
     });
 
     const selectedRoom = useMemo(() => rooms.find(r => String(r.id) === String(data.room_id)), [data.room_id, rooms]);
-    const isAdminOrStaff = ['admin', 'super_admin', 'staff'].includes(role || 'staff');
 
     // --- Logic Hooks ---
     useEffect(() => {
@@ -107,7 +110,7 @@ export default function AddReservation({
     const validReservations = useMemo(() => {
         if (!selectedRoom?.reservations) return [];
         return selectedRoom.reservations.filter(res => {
-            const status = res.status.toLowerCase().replace(/[-_ ]/g, ''); 
+            const status = res.status.toLowerCase().replace(/[-_ ]/g, '');
             return ['pending', 'confirmed', 'checkedin', 'checkedout'].includes(status);
         });
     }, [selectedRoom]);
@@ -178,9 +181,9 @@ export default function AddReservation({
 
     // --- Calendar Logic ---
     const daysInMonth = useMemo(() => {
-        return eachDayOfInterval({ 
-            start: startOfMonth(currentMonth), 
-            end: endOfMonth(currentMonth) 
+        return eachDayOfInterval({
+            start: startOfMonth(currentMonth),
+            end: endOfMonth(currentMonth)
         });
     }, [currentMonth]);
 
@@ -195,7 +198,7 @@ export default function AddReservation({
     };
 
     const getEarliestAvailableTime = (date: Date) => {
-        const standardCheckIn = addHours(startOfDay(date), 14); 
+        const standardCheckIn = addHours(startOfDay(date), 14);
         const overlapping = validReservations.filter(res => {
             const start = parseISO(res.check_in_date);
             const end = parseISO(res.check_out_date);
@@ -219,14 +222,14 @@ export default function AddReservation({
         const availableTime = getEarliestAvailableTime(selectedDate);
         if (!availableTime) return;
 
-        const nextDay = addHours(startOfDay(availableTime), 24 + 12); 
+        const nextDay = addHours(startOfDay(availableTime), 24 + 12);
 
         setData(prev => ({
             ...prev,
             check_in_date: format(availableTime, "yyyy-MM-dd'T'HH:mm"),
             check_out_date: format(nextDay, "yyyy-MM-dd'T'HH:mm"),
         }));
-        clearErrors(); 
+        clearErrors();
         setStep('form');
     };
 
@@ -251,8 +254,8 @@ export default function AddReservation({
 
     // --- Price Calculation ---
     const priceDetails = useMemo(() => {
-        let roomTotal = 0; 
-        let nights = 0; 
+        let roomTotal = 0;
+        let nights = 0;
         let extraHours = 0;
         let lateHours = 0;
 
@@ -265,26 +268,26 @@ export default function AddReservation({
                 if (nights === 0) nights = 1;
 
                 const policyCheckOut = new Date(end);
-                policyCheckOut.setHours(12, 0, 0, 0); 
+                policyCheckOut.setHours(12, 0, 0, 0);
 
                 if (isAfter(end, policyCheckOut)) {
                     lateHours = differenceInHours(end, policyCheckOut);
                 }
 
-                extraHours = lateHours; 
+                extraHours = lateHours;
                 const roomPrice = selectedRoom.room_category?.price ?? 0;
-                const hourlyFee = roomPrice * 0.10; 
+                const hourlyFee = roomPrice * 0.10;
 
                 roomTotal = (nights * roomPrice) + (extraHours * hourlyFee);
             }
         }
         const servicesTotal = data.selected_services.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        
-        return { 
-            grandTotal: roomTotal + servicesTotal, 
-            roomTotal, 
-            servicesTotal, 
-            nights, 
+
+        return {
+            grandTotal: roomTotal + servicesTotal,
+            roomTotal,
+            servicesTotal,
+            nights,
             extraHours,
             lateHours
         };
@@ -301,7 +304,7 @@ export default function AddReservation({
 
     const startingDayIndex = startOfMonth(currentMonth).getDay();
     const activeReservations = selectedDate ? getReservationsForDate(selectedDate) : [];
-    
+
     const sortedReservations = [...activeReservations].sort((a, b) => {
         return parseISO(a.check_out_date).getTime() - parseISO(b.check_out_date).getTime();
     });
@@ -333,7 +336,7 @@ export default function AddReservation({
                 <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-0 md:p-4">
                         <Dialog.Panel className={`w-full md:max-w-6xl h-full md:h-[800px] md:rounded-3xl bg-card shadow-2xl flex flex-col lg:flex-row overflow-hidden ${gradientBg}`}>
-                            
+
                             {/* --- Left Panel (Main Content) --- */}
                             <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                                 <div className="px-4 py-4 md:px-8 md:pt-8 md:pb-4 flex justify-between items-start z-10 bg-card/80 backdrop-blur-md sticky top-0 border-b border-border/50">
@@ -345,9 +348,9 @@ export default function AddReservation({
                                         </Dialog.Title>
                                         <div className="flex gap-3 md:gap-6">
                                             <StepIndicator current={step} target="room" label="Room" />
-                                            <div className="h-px w-4 md:w-8 bg-border self-center"/>
+                                            <div className="h-px w-4 md:w-8 bg-border self-center" />
                                             <StepIndicator current={step} target="calendar" label="Date" />
-                                            <div className="h-px w-4 md:w-8 bg-border self-center"/>
+                                            <div className="h-px w-4 md:w-8 bg-border self-center" />
                                             <StepIndicator current={step} target="form" label="Confirm" />
                                         </div>
                                     </div>
@@ -371,7 +374,7 @@ export default function AddReservation({
                                     {step === 'room' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500 pb-20 lg:pb-0">
                                             {rooms.map(room => (
-                                                <div 
+                                                <div
                                                     key={room.id}
                                                     onClick={() => { setData('room_id', room.id.toString()); setStep('calendar'); }}
                                                     className="group relative bg-card border border-border/60 hover:border-primary/50 rounded-2xl p-5 cursor-pointer transition-all hover:shadow-lg active:scale-95 md:active:scale-100 flex flex-col"
@@ -408,15 +411,15 @@ export default function AddReservation({
                                                         {format(currentMonth, 'MMMM yyyy')}
                                                     </span>
                                                     <div className="flex gap-1">
-                                                        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-muted rounded-lg text-foreground"><ChevronLeft size={16}/></button>
-                                                        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-muted rounded-lg text-foreground"><ChevronRight size={16}/></button>
+                                                        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-muted rounded-lg text-foreground"><ChevronLeft size={16} /></button>
+                                                        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-muted rounded-lg text-foreground"><ChevronRight size={16} /></button>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className="bg-card rounded-2xl border border-border p-4 md:p-6 shadow-sm flex-1 flex flex-col">
                                                 <div className="grid grid-cols-7 mb-2">
-                                                    {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+                                                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
                                                         <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-muted-foreground/50 uppercase py-2">{d}</div>
                                                     ))}
                                                 </div>
@@ -466,8 +469,11 @@ export default function AddReservation({
 
                                             <div className="grid gap-6 md:gap-8">
                                                 {/* Guest Info */}
+
                                                 <div className="space-y-4">
-                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><User size={14} /> Guest Information</h4>
+                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                                        <User size={14} /> Guest Information
+                                                    </h4>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="space-y-1.5">
                                                             <label className="text-xs font-medium text-foreground ml-1">Full Name</label>
@@ -477,6 +483,21 @@ export default function AddReservation({
                                                             <label className="text-xs font-medium text-foreground ml-1">Phone Number</label>
                                                             <input className={`${inputClass} ${errors.contact_number && 'border-destructive'}`} placeholder="0912 345 6789" maxLength={11} value={data.contact_number} onChange={e => setData('contact_number', e.target.value.replace(/\D/g, ''))} required />
                                                         </div>
+
+                                                        {/* ONLY staff sees this, so only staff fills it out */}
+                                                        {isAdminOrStaff && (
+                                                            <div className="space-y-1.5 md:col-span-2 animate-in fade-in slide-in-from-top-2">
+                                                                <label className="text-xs font-medium text-foreground ml-1">Guest Email (For Booking Confirmation)</label>
+                                                                <input
+                                                                    type="email"
+                                                                    className={`${inputClass} ${errors.guest_email && 'border-destructive'}`}
+                                                                    placeholder="guest@example.com"
+                                                                    value={data.guest_email}
+                                                                    onChange={e => setData('guest_email', e.target.value)}
+                                                                    required={isAdminOrStaff} // Forces staff to enter an email
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
 
@@ -491,7 +512,7 @@ export default function AddReservation({
                                                             {/* Show Local Error or Server Error */}
                                                             {(errors.check_in_date || localError) && (
                                                                 <p className="text-[10px] font-bold text-destructive flex items-center gap-1">
-                                                                    <XCircle size={10}/> {localError || errors.check_in_date}
+                                                                    <XCircle size={10} /> {localError || errors.check_in_date}
                                                                 </p>
                                                             )}
                                                         </div>
@@ -504,9 +525,9 @@ export default function AddReservation({
                                                         <div className="space-y-1.5">
                                                             <label className="text-xs font-medium text-foreground ml-1">Total Guests</label>
                                                             <div className="flex items-center gap-4 bg-muted/30 border border-border rounded-xl p-2 w-full sm:w-fit">
-                                                                <button onClick={() => setData('total_guest', Math.max(1, data.total_guest - 1))} className="p-2 hover:bg-background rounded-lg shadow-sm"><Minus size={14}/></button>
+                                                                <button onClick={() => setData('total_guest', Math.max(1, data.total_guest - 1))} className="p-2 hover:bg-background rounded-lg shadow-sm"><Minus size={14} /></button>
                                                                 <span className="w-8 text-center font-bold text-sm">{data.total_guest}</span>
-                                                                <button onClick={() => setData('total_guest', data.total_guest + 1)} className="p-2 hover:bg-background rounded-lg shadow-sm"><Plus size={14}/></button>
+                                                                <button onClick={() => setData('total_guest', data.total_guest + 1)} className="p-2 hover:bg-background rounded-lg shadow-sm"><Plus size={14} /></button>
                                                             </div>
                                                         </div>
                                                         {isAdminOrStaff && (
@@ -536,9 +557,9 @@ export default function AddReservation({
                                                                         <p className="text-[10px] text-muted-foreground font-mono">₱{svc.services_price}</p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2 bg-background rounded-lg border border-border p-1">
-                                                                        <button type="button" onClick={() => updateServiceQuantity(svc.id, -1)} disabled={qty === 0} className="w-6 h-6 flex items-center justify-center hover:bg-muted rounded text-foreground disabled:opacity-30"><Minus size={10}/></button>
+                                                                        <button type="button" onClick={() => updateServiceQuantity(svc.id, -1)} disabled={qty === 0} className="w-6 h-6 flex items-center justify-center hover:bg-muted rounded text-foreground disabled:opacity-30"><Minus size={10} /></button>
                                                                         <span className="w-4 text-center text-xs font-bold">{qty}</span>
-                                                                        <button type="button" onClick={() => updateServiceQuantity(svc.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-muted rounded text-primary"><Plus size={10}/></button>
+                                                                        <button type="button" onClick={() => updateServiceQuantity(svc.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-muted rounded text-primary"><Plus size={10} /></button>
                                                                     </div>
                                                                 </div>
                                                             )
