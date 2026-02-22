@@ -13,6 +13,7 @@ class ReservationRequest extends FormRequest
     {
         return true;
     }
+    
 
     /**
      * Get the validation rules that apply to the request.
@@ -23,6 +24,7 @@ class ReservationRequest extends FormRequest
             // 1. Basic Reservation Details
             'room_id' => ['required', 'exists:rooms,id'], // Ensures the room actually exists
            'contact_number' => ['required', 'digits:11'],
+           'guest_email'=>['nullable','email'],
             'total_guest' => ['required', 'integer', 'min:1'],
             'guest_name'=>['required'],
             

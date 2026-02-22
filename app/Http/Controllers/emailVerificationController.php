@@ -33,9 +33,9 @@ class emailVerificationController extends Controller
             });
 
             // 4. Send Receipt Email (Queued for speed)
-            if ($reservation->user && $reservation->user->email) {
+            if ($reservation->user && $reservation->guest_email) {
                 try {
-                    Mail::to($reservation->user->email)->queue(new ReservationReceiptEmail($reservation));
+                    Mail::to($reservation->guest_email)->queue(new ReservationReceiptEmail($reservation));
                 } catch (\Throwable $e) {
                     Log::error("Failed to queue receipt email for Res #{$reservation->id}: " . $e->getMessage());
                 }

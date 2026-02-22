@@ -96,7 +96,7 @@ class ReservationServices
             
             if ($reservation->user && $reservation->user->email) {
                 try {
-                    Mail::to($reservation->user->email)->queue(new ReservationConfirmed($reservation));
+                    Mail::to($reservation->guest_email)->queue(new ReservationConfirmed($reservation));
                 } catch (\Throwable $e) {
                     Log::error("Email Error: " . $e->getMessage());
                 }
