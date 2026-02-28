@@ -79,7 +79,7 @@ export default function AddReservation({
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [localError, setLocalError] = useState<string | null>(null);
 
-    const isAdminOrStaff = ['admin', 'super_admin', 'staff'].includes(role || 'staff');
+    const isAdminOrStaff = ['admin', 'supperAdmin', 'staff'].includes(role || 'staff');
 
     const { data, setData, post, processing, reset, errors, clearErrors } = useForm<ReservationFormState>({
         room_id: preSelectedRoomId ? preSelectedRoomId.toString() : '',
