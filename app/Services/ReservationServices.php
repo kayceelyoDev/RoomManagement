@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enum\ReservationEnum;
 use App\Mail\ReservationCancellationMain;
 use App\Mail\ReservationConfirmed;
+use App\Mail\ReservationReceiptEmail;
 use App\Models\Reservation;
 use Exception;
 use Illuminate\Support\Carbon;
@@ -142,7 +143,7 @@ class ReservationServices
                 }
             }elseif($reservation->status == ReservationEnum::Confirmed){
                 try {
-                    Mail::to($reservation->guest_email)->queue(new ReservationConfirmed($reservation));
+                    Mail::to($reservation->guest_email)->queue(new ReservationReceiptEmail($reservation));
                 } catch (\Throwable $e) {
                     Log::error("Email Error: " . $e->getMessage());
                 }
