@@ -95,10 +95,6 @@ export default function AddReservation({
     });
 
     const selectedRoom = useMemo(() => rooms.find(r => String(r.id) === String(data.room_id)), [data.room_id, rooms]);
-<<<<<<< HEAD
-    const isAdminOrStaff = ['admin', 'supperAdmin', 'staff'].includes(role || 'staff');
-=======
->>>>>>> 45bda2ca2a5725670846716823e7e773e4227f78
 
     // --- Logic Hooks ---
     useEffect(() => {
