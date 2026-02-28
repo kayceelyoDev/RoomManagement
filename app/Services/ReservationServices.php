@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enum\ReservationEnum;
+use App\Mail\ReservationCancellationMain;
 use App\Mail\ReservationConfirmed;
 use App\Models\Reservation;
 use Exception;
@@ -94,9 +95,9 @@ class ReservationServices
                 }
             }
             
-            if ($reservation->user && $reservation->user->email) {
+            if ($reservation->user && $reservation->guest_email) {
                 try {
-                    Mail::to($reservation->user->email)->queue(new ReservationConfirmed($reservation));
+                    Mail::to($reservation->guest_email)->queue(new ReservationConfirmed($reservation));
                 } catch (\Throwable $e) {
                     Log::error("Email Error: " . $e->getMessage());
                 }
@@ -132,6 +133,20 @@ class ReservationServices
             unset($data['selected_services']);
 
             $reservation->update($data);
+
+            if($reservation->status == ReservationEnum::Cancelled){
+                try {
+                    Mail::to($reservation->guest_email)->queue(new ReservationCancellationMain($reservation));
+                } catch (\Throwable $e) {
+                    Log::error("Email Error: " . $e->getMessage());
+                }
+            }elseif($reservation->status == ReservationEnum::Confirmed){
+                try {
+                    Mail::to($reservation->guest_email)->queue(new ReservationConfirmed($reservation));
+                } catch (\Throwable $e) {
+                    Log::error("Email Error: " . $e->getMessage());
+                }
+            }
 
             $syncPayload = [];
             foreach ($servicesData as $item) {

@@ -63,7 +63,7 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     preSelectedRoomId?: number | null;
-    role?: 'admin' | 'staff' | 'guest' | 'super_admin';
+    role?: 'admin' | 'staff' | 'guest' | 'supperAdmin';
 }
 
 const BUFFER_HOURS = 3; 
@@ -91,7 +91,7 @@ export default function AddReservation({
     });
 
     const selectedRoom = useMemo(() => rooms.find(r => String(r.id) === String(data.room_id)), [data.room_id, rooms]);
-    const isAdminOrStaff = ['admin', 'super_admin', 'staff'].includes(role || 'staff');
+    const isAdminOrStaff = ['admin', 'supperAdmin', 'staff'].includes(role || 'staff');
 
     // --- Logic Hooks ---
     useEffect(() => {
