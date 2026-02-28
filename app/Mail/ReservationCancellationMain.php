@@ -15,15 +15,13 @@ class ReservationCancellationMain extends Mailable
     use Queueable, SerializesModels;
 
     public $reservation;
+    public $isAutoCancelled;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct(Reservation $reservation)
+    public function __construct(Reservation $reservation, $isAutoCancelled = false)
     {
         $this->reservation = $reservation;
+        $this->isAutoCancelled = $isAutoCancelled;
     }
-
     /**
      * Get the message envelope.
      */

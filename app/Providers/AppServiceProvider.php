@@ -77,7 +77,11 @@ class AppServiceProvider extends ServiceProvider
             return strtolower($userRole) === strtolower(roles::SUPPERADMIN->value);
         });
 
-        // Keep your guest gate if needed
+        Gate::define('access-analytics', function(User $user){
+            return $user->role === roles::SUPPERADMIN;
+        });
+
+       
         Gate::define('acces-guest', function (User $user) {
             return $user->role === roles::GUEST;
         });
