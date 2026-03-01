@@ -17,7 +17,7 @@ class PasswordController extends Controller
     {
         return Inertia::render('settings/password');
     }
-
+    
     /**
      * Update the user's password.
      */

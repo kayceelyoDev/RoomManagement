@@ -5,11 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
-import { email } from '@/routes/password';
-import { Form, Head, Link } from '@inertiajs/react';
+import { email as emailRoute } from '@/routes/password';
+import { Form, Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, KeyRound } from 'lucide-react';
+import ReCAPTCHA from "react-google-recaptcha";
 
 export default function ForgotPassword({ status }: { status?: string }) {
+    const form = useForm({
+        email: '',
+        'g-recaptcha-response': '',
+    });
+
     return (
         <div className="min-h-screen w-full grid lg:grid-cols-2 font-sans text-[#2C3930]">
             <Head title="Forgot password" />
@@ -90,7 +96,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         </div>
                     )}
 
-                    <Form method="post" action={email.post()} className="space-y-6">
+                    <Form method="post" action={emailRoute.post()} className="space-y-6">
                         {({ processing, errors }) => (
                             <>
                                 <div className="space-y-4">
@@ -102,12 +108,22 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                             id="email"
                                             type="email"
                                             name="email"
+                                            value={form.data.email}
+                                            onChange={(e) => form.setData('email', e.target.value)}
                                             autoComplete="email"
                                             autoFocus
                                             placeholder="name@example.com"
                                             className="bg-transparent border-[#FFFDE1]/20 text-[#FFFDE1] placeholder:text-[#FFFDE1]/30 focus:border-[#D8E983] focus:ring-[#D8E983]/50 h-12"
                                         />
                                         <InputError message={errors.email} className="text-red-400" />
+                                    </div>
+                                    <div className="pt-2">
+                                        <ReCAPTCHA
+                                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                            onChange={(token) => form.setData('g-recaptcha-response', token || '')}
+                                        />
+                                        {/* @ts-ignore */}
+                                        <InputError message={errors['g-recaptcha-response']} className="text-red-400 mt-2" />
                                     </div>
                                 </div>
 
@@ -117,7 +133,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                     disabled={processing}
                                     data-test="email-password-reset-link-button"
                                 >
-                                    {processing && <Spinner className="text-[#2C3930] mr-2" />}
+                                    {processing ? <Spinner className="text-[#2C3930] mr-2" /> : null}
                                     Email Password Reset Link
                                 </Button>
                             </>

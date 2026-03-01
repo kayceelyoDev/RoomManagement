@@ -10,9 +10,10 @@ import {
     format, subMonths, startOfMonth, endOfMonth,
     eachDayOfInterval, isSameDay, startOfToday, addHours, startOfDay,
     isBefore, parseISO, areIntervalsOverlapping,
-    differenceInCalendarDays, differenceInHours, isAfter
+    differenceInCalendarDays, differenceInHours, isAfter, addMonths
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import ReCAPTCHA from "react-google-recaptcha";
 
 // --- Types ---
 export interface Service {
@@ -56,6 +57,7 @@ interface ReservationFormState {
     status: string;
     reservation_amount: number;
     selected_services: SelectedServiceItem[];
+    'g-recaptcha-response'?: string;
 }
 
 interface Props {
@@ -78,6 +80,7 @@ export default function AddReservation({
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [localError, setLocalError] = useState<string | null>(null);
+    const [requiresCaptcha, setRequiresCaptcha] = useState(false);
 
     const isAdminOrStaff = ['admin', 'supperAdmin', 'staff'].includes(role || 'staff');
 
@@ -92,6 +95,7 @@ export default function AddReservation({
         status: 'pending',
         reservation_amount: 0,
         selected_services: [],
+        'g-recaptcha-response': '',
     });
 
     const selectedRoom = useMemo(() => rooms.find(r => String(r.id) === String(data.room_id)), [data.room_id, rooms]);
@@ -152,6 +156,14 @@ export default function AddReservation({
         }
 
     }, [data.check_in_date, data.check_out_date, validReservations]);
+
+    // --- CAPTCHA MONITOR ---
+    useEffect(() => {
+        // @ts-ignore
+        if (errors['g-recaptcha-response']) {
+            setRequiresCaptcha(true);
+        }
+    }, [errors['g-recaptcha-response']]);
 
     useEffect(() => {
         if (isOpen) {
@@ -566,6 +578,26 @@ export default function AddReservation({
                                                         })}
                                                     </div>
                                                 </div>
+                                                
+                                                {/* Conditionally Render Google reCAPTCHA v2 */}
+                                                {requiresCaptcha && (
+                                                    <div className="pt-2 border-t border-border mt-2">
+                                                        <label className="text-xs font-medium mb-2 block text-orange-500">Security Verification Required</label>
+                                                        <p className="text-[10px] text-muted-foreground mb-2">High request volume detected. Please verify you are human.</p>
+                                                        <ReCAPTCHA
+                                                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                                            onChange={(token) => setData('g-recaptcha-response', token || '')}
+                                                        />
+                                                        {/* @ts-ignore */}
+                                                        {errors['g-recaptcha-response'] && (
+                                                            <p className="text-sm text-destructive mt-1 font-medium">
+                                                                {/* @ts-ignore */}
+                                                                {errors['g-recaptcha-response']}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                
                                             </div>
                                         </div>
                                     )}
@@ -658,7 +690,7 @@ export default function AddReservation({
                                         </div>
                                         <div className="pt-4 md:pt-6 mt-auto flex gap-3">
                                             <Button variant="outline" onClick={() => setStep('calendar')} className="h-12 md:h-14 px-4 md:px-6 rounded-xl border-border font-bold">Back</Button>
-                                            {/* Disable button if localError is present */}
+                                            {/* Disable button if localError is present AND recaptcha logic checks could be added */}
                                             <Button onClick={submit} disabled={processing || !!localError} className="flex-1 h-12 md:h-14 text-sm md:text-base bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 rounded-xl">
                                                 {processing ? <Loader2 className="animate-spin size-5" /> : 'Confirm Booking'}
                                             </Button>

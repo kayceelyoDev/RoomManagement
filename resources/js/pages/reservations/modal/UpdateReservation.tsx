@@ -140,7 +140,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                 roomTotal = (nights * roomPrice) + (extraHours * hourlySurcharge);
             }
         }
-
+        
         // Calculate services total safely
         const servicesTotal = data.selected_services.reduce((sum, item) => {
             const itemPrice = Number(item.price) || 0; // Fallback to 0 if NaN
@@ -256,8 +256,9 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                 <input
                                                     type="datetime-local"
                                                     value={data.check_in_date}
-                                                    onChange={e => setData('check_in_date', e.target.value)}
-                                                    className={`w-full rounded-lg border-input bg-background p-2.5 text-sm ${errors.check_in_date ? 'border-red-500' : ''}`}
+                                                    readOnly
+                                                    disabled
+                                                    className={`w-full rounded-lg border-input bg-muted p-2.5 text-sm cursor-not-allowed opacity-70 ${errors.check_in_date ? 'border-red-500' : ''}`}
                                                 />
                                                 <ErrorMessage message={errors.check_in_date} />
                                             </div>
@@ -268,8 +269,9 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                 <input
                                                     type="datetime-local"
                                                     value={data.check_out_date}
-                                                    onChange={e => setData('check_out_date', e.target.value)}
-                                                    className={`w-full rounded-lg border-input bg-background p-2.5 text-sm ${errors.check_out_date ? 'border-red-500' : ''}`}
+                                                    readOnly
+                                                    disabled
+                                                    className={`w-full rounded-lg border-input bg-muted p-2.5 text-sm cursor-not-allowed opacity-70 ${errors.check_out_date ? 'border-red-500' : ''}`}
                                                 />
                                                 <ErrorMessage message={errors.check_out_date} />
                                             </div>
