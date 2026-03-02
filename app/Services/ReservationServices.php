@@ -24,13 +24,11 @@ class ReservationServices
     {
         $newStart = Carbon::parse($checkIn);
 
-        // The new reservation effectively ends at CheckOut + Buffer
+       
         $newEnd = Carbon::parse($checkOut)->addHours(self::BUFFER_HOURS);
 
-        // FIX FOR POSTGRESQL:
-        // Instead of doing "check_out + 3 hours > new_start" in SQL (which breaks),
-        // we do "check_out > new_start - 3 hours" in PHP.
-        // This is mathematically identical but works on ALL databases.
+     
+     
         $thresholdTime = $newStart->copy()->subHours(self::BUFFER_HOURS);
 
         $activeStatuses = [

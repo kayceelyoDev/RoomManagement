@@ -33,7 +33,6 @@ class CheckInservices
             $transaction = Transaction::create([
                 'reservation_id' => $reservation->id,
                 'payment_amount' => $data['payment_amount'],
-                'payment_method' => $data['payment_method'] ?? 'cash',
                 'user_id'        => $userId,
             ]);
 
