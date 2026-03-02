@@ -21,6 +21,7 @@ class Reservation extends Model
         'total_guest',
         'check_in_date',
         'check_out_date',
+
         'reservation_amount',
         'room_id',
         'status',

@@ -70,7 +70,7 @@ class ReservationServices
     {
         $data['check_in_date'] = Carbon::parse($data['check_in_date'])->format('Y-m-d H:i:s');
         $data['check_out_date'] = Carbon::parse($data['check_out_date'])->format('Y-m-d H:i:s');
-
+        unset($data['g-recaptcha-response']);
         $this->checkAvailability(
             $data['room_id'],
             $data['check_in_date'],
@@ -109,7 +109,7 @@ class ReservationServices
     {
         $data['check_in_date'] = Carbon::parse($data['check_in_date'])->format('Y-m-d H:i:s');
         $data['check_out_date'] = Carbon::parse($data['check_out_date'])->format('Y-m-d H:i:s');
-
+        unset($data['g-recaptcha-response']);
         $this->checkAvailability(
             $data['room_id'],
             $data['check_in_date'],
