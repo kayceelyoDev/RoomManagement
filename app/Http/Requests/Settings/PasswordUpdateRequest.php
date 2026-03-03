@@ -22,4 +22,14 @@ class PasswordUpdateRequest extends FormRequest
             'password' => $this->passwordRules(),
         ];
     }
+
+        /**
+         * Get custom messages for validation errors.
+         *
+         * @return array<string, string>
+         */
+        public function messages(): array
+        {
+            return $this->errorMessages();
+        }
 }

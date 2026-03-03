@@ -6,6 +6,7 @@ use App\Enum\ReservationEnum;
 use App\Models\Reservation;
 use App\Models\Rooms;
 use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -34,7 +35,7 @@ class DashboardController extends Controller
         ]);
     }
 
-  
+
 
     private function getOperationalStats()
     {
@@ -84,7 +85,7 @@ class DashboardController extends Controller
 
     private function getBookingVolume()
     {
-      
+
         return Reservation::select(
             DB::raw('CAST(check_in_date AS DATE) as date'),
             DB::raw('COUNT(*) as count')
@@ -108,7 +109,7 @@ class DashboardController extends Controller
             ? round((($currentRevenue - $previousRevenue) / $previousRevenue) * 100, 1)
             : ($currentRevenue > 0 ? 100 : 0);
 
-       
+
         $revenueTrend = Transaction::whereBetween('created_at', [$thirtyDaysAgo, $now])
             ->select(
                 DB::raw('CAST(created_at AS DATE) as date'),
@@ -148,7 +149,7 @@ class DashboardController extends Controller
                 'rooms.room_name',
                 DB::raw('COUNT(reservations.id) as bookings'),
                 DB::raw('SUM(reservations.reservation_amount) as earned'),
-             
+
                 DB::raw('AVG(CAST(reservations.check_out_date AS DATE) - CAST(reservations.check_in_date AS DATE)) as avg_stay')
             )
             ->where('reservations.status', '!=', ReservationEnum::Cancelled)
@@ -167,7 +168,7 @@ class DashboardController extends Controller
 
     private function getAvgStay()
     {
-       
+
         $val = Reservation::where('status', ReservationEnum::CheckedOut)
             ->select(DB::raw('AVG(CAST(check_out_date AS DATE) - CAST(check_in_date AS DATE)) as days'))
             ->value('days');
