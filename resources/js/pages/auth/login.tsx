@@ -10,6 +10,7 @@ import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 import { Form, Head, useForm, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
+import ReCAPTCHA from "react-google-recaptcha";
 
 type Props = {
     status?: string;
@@ -26,6 +27,7 @@ export default function Login({
         email: '',
         password: '',
         remember: false,
+        'g-recaptcha-response': '',
     });
 
     return (
@@ -186,6 +188,15 @@ export default function Login({
                                             </Link>
                                         )}
                                     </div>
+
+                                    <div className="pt-2">
+                                        <ReCAPTCHA
+                                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                            onChange={(token) => form.setData('g-recaptcha-response', token || '')}
+                                        />
+                                        {/* @ts-ignore */}
+                                        <InputError message={errors['g-recaptcha-response']} className="text-red-400 mt-2" />
+                                    </div>
                                 </div>
 
                                 <Button
@@ -194,7 +205,7 @@ export default function Login({
                                     tabIndex={4}
                                     disabled={processing}
                                 >
-                                    {processing && <Spinner className="text-[#2C3930] mr-2" />}
+                                    {processing ? <Spinner className="text-[#2C3930] mr-2" /> : null}
                                     Log In
                                 </Button>
                             </>

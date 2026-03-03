@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\enum\ReservationEnum;
+use App\Enum\ReservationEnum;
 use App\Mail\ReservationCancellationMain; // <-- Check if this should be 'Mail'
 use App\Models\Reservation;
 use Carbon\Carbon;

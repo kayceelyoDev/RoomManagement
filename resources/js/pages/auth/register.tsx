@@ -8,6 +8,7 @@ import { login } from '@/routes';
 import { store } from '@/routes/register';
 import { Form, Head, useForm, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
+import ReCAPTCHA from "react-google-recaptcha";
 
 export default function Register() {
     const form = useForm({
@@ -15,6 +16,7 @@ export default function Register() {
         email: '',
         password: '',
         password_confirmation: '',
+        'g-recaptcha-response': '',
     });
 
     return (
@@ -179,6 +181,15 @@ export default function Register() {
                                         />
                                         <InputError message={errors.password_confirmation} className="text-red-400" />
                                     </div>
+
+                                    <div className="pt-2">
+                                        <ReCAPTCHA
+                                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                            onChange={(token) => form.setData('g-recaptcha-response', token || '')}
+                                        />
+                                        {/* @ts-ignore */}
+                                        <InputError message={errors['g-recaptcha-response']} className="text-red-400 mt-2" />
+                                    </div>
                                 </div>
 
                                 <Button
@@ -188,7 +199,7 @@ export default function Register() {
                                     disabled={processing}
                                     data-test="register-button"
                                 >
-                                    {processing && <Spinner className="text-[#2C3930] mr-2" />}
+                                    {processing ? <Spinner className="text-[#2C3930] mr-2" /> : null}
                                     Create Account
                                 </Button>
                             </>

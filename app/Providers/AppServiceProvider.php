@@ -5,12 +5,12 @@ namespace App\Providers;
 use App\Enum\roles;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,72 +27,37 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Gate::define('acces-admin',function(User $user){
-        //     return $user->role === roles::ADMIN;
-        // });
+        // Add Strict Model checking (Protects against mass assignment and lazy-loading bugs)
+        // Automatically turns off in production, but guarantees you don't commit vulnerable queries locally.
+        Model::shouldBeStrict(! app()->isProduction());
 
-        // Gate::define('acces-staff',function(User $user){
-        //     return $user->role === roles::STAFF;
-        // });
+        Gate::define('manage-rooms', fn(User $user) => in_array($user->role, [
+            roles::ADMIN,
+            roles::SUPPERADMIN,
+        ]));
 
-        // Gate::define('acces-supperAdmin',function(User $user){
-        //     return $user->role === roles::SUPPERADMIN;
-        // });
+        Gate::define('manage-reservations', fn(User $user) => in_array($user->role, [
+            roles::ADMIN,
+            roles::SUPPERADMIN,
+            roles::STAFF,
+        ]));
 
-        // Gate::define('view-room-management', function(User $user){
-        //     return in_array($user->role,[
-        //         roles::ADMIN,
-        //         roles::SUPPERADMIN,
-        //     ]); 
-        // });
-
-        // Gate::define('access-dashboard',function(User $user){
-        //     return  in_array($user->role,[
-        //         roles::ADMIN,
-        //         roles::STAFF,
-        //         roles::SUPPERADMIN,
-        //     ]);
-        // });
-
-        Gate::define('manage-rooms', function (User $user) {
-            return in_array($user->role, [
-                roles::ADMIN,
-                roles::SUPPERADMIN,
-            ]);
-        });
-
-        Gate::define('manage-reservations', function (User $user) {
-            return in_array($user->role, [
-                roles::ADMIN,
-                roles::SUPPERADMIN,
-                roles::STAFF,
-            ]);
-        });
-
-       Gate::define('manage-user', function (User $user) {
-           
+        Gate::define('manage-user', function (User $user) {
             $userRole = $user->role instanceof roles ? $user->role->value : $user->role;
-
-            // Now compare the strings safely
-            return strtolower($userRole) === strtolower(roles::SUPPERADMIN->value);
+            return strtolower((string) $userRole) === strtolower(roles::SUPPERADMIN->value);
         });
 
-        Gate::define('access-analytics', function(User $user){
-            return $user->role === roles::SUPPERADMIN;
-        });
+        Gate::define('access-analytics', fn(User $user) => $user->role === roles::SUPPERADMIN);
 
-       
-        Gate::define('acces-guest', function (User $user) {
-            return $user->role === roles::GUEST;
-        });
+        Gate::define('acces-guest', fn(User $user) => $user->role === roles::GUEST);
 
         Password::defaults(function () {
-        return Password::min(8)
-            ->letters()
-            ->mixedCase()
-            ->numbers()
-            ->symbols()
-            ->uncompromised();
+            return Password::min(8)
+                ->letters()
+                ->mixedCase()
+                ->numbers()
+                ->symbols()
+                ->uncompromised();
         });
     }
 
@@ -106,13 +71,13 @@ class AppServiceProvider extends ServiceProvider
 
         Password::defaults(
             fn(): ?Password => app()->isProduction()
-            ? Password::min(12)
+                ? Password::min(12)
                 ->mixedCase()
                 ->letters()
                 ->numbers()
                 ->symbols()
                 ->uncompromised()
-            : null
+                : null
         );
     }
 }

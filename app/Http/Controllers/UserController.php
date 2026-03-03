@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\PasswordValidationRules;
 use App\Enum\roles;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -50,13 +51,13 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => $this->passwordRules(),
             'role' => 'required|in:' . implode(',', [
                 roles::ADMIN->value,
                 roles::STAFF->value,
                 roles::SUPPERADMIN->value
             ]),
-        ]);
+        ], $this->errorMessages());
 
         User::create([
             'name' => $request->name,

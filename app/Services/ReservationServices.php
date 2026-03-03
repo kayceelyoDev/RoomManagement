@@ -8,6 +8,8 @@ use App\Mail\ReservationConfirmed;
 use App\Mail\ReservationReceiptEmail;
 use App\Models\Reservation;
 use Exception;
+use Illuminate\Mail\Mailable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,17 +20,15 @@ class ReservationServices
 {
     private const BUFFER_HOURS = 3;
 
-    protected function checkAvailability($roomId, $checkIn, $checkOut, $excludeId = null)
+    protected function checkAvailability(int|string $roomId, string $checkIn, string $checkOut, ?int $excludeId = null): void
     {
         $newStart = Carbon::parse($checkIn);
-        
-        // The new reservation effectively ends at CheckOut + Buffer
+
+       
         $newEnd = Carbon::parse($checkOut)->addHours(self::BUFFER_HOURS);
 
-        // FIX FOR POSTGRESQL:
-        // Instead of doing "check_out + 3 hours > new_start" in SQL (which breaks),
-        // we do "check_out > new_start - 3 hours" in PHP.
-        // This is mathematically identical but works on ALL databases.
+     
+     
         $thresholdTime = $newStart->copy()->subHours(self::BUFFER_HOURS);
 
         $activeStatuses = [
@@ -38,14 +38,15 @@ class ReservationServices
             ReservationEnum::CheckedOut->value,
         ];
 
-        $conflict = Reservation::where('room_id', $roomId)
+        $conflict = Reservation::select('id', 'check_out_date')
+            ->where('room_id', $roomId)
             ->whereIn('status', $activeStatuses)
             ->where(function ($query) use ($newEnd, $thresholdTime) {
                 // 1. Existing Start < New End (with buffer)
                 $query->where('check_in_date', '<', $newEnd)
-                // 2. Existing End > Threshold (New Start - Buffer)
-                // This replaces the raw DATE_ADD SQL
-                      ->where('check_out_date', '>', $thresholdTime);
+                    // 2. Existing End > Threshold (New Start - Buffer)
+                    // This replaces the raw DATE_ADD SQL
+                    ->where('check_out_date', '>', $thresholdTime);
             })
             ->when($excludeId, function ($query, $id) {
                 $query->where('id', '!=', $id);
@@ -65,88 +66,71 @@ class ReservationServices
         }
     }
 
-    public function createReservation(array $data)
+    public function createReservation(array $data): Reservation
     {
-        // ... (rest of the code remains the same)
         $data['check_in_date'] = Carbon::parse($data['check_in_date'])->format('Y-m-d H:i:s');
         $data['check_out_date'] = Carbon::parse($data['check_out_date'])->format('Y-m-d H:i:s');
-
+        unset($data['g-recaptcha-response']);
         $this->checkAvailability(
-            $data['room_id'], 
-            $data['check_in_date'], 
+            $data['room_id'],
+            $data['check_in_date'],
             $data['check_out_date']
         );
 
-        DB::beginTransaction();
-        try {
-            // ... (rest of logic)
-            $servicesData = $data['selected_services'] ?? [];
-            unset($data['selected_services']);
+        $servicesData = Arr::pull($data, 'selected_services', []);
 
+        return DB::transaction(function () use ($data, $servicesData) {
             $data['status'] = $data['status'] ?? ReservationEnum::Pending->value;
 
             $reservation = Reservation::create($data);
-            
+
             if (!empty($servicesData)) {
+                $syncPayload = [];
                 foreach ($servicesData as $item) {
-                    $reservation->services()->attach($item['id'], [
+                    $syncPayload[$item['id']] = [
                         'quantity' => $item['quantity'],
                         'total_amount' => $item['price'] * $item['quantity']
-                    ]);
+                    ];
                 }
+                $reservation->services()->sync($syncPayload);
             }
-            
+
             if ($reservation->user && $reservation->guest_email) {
-                try {
-                    Mail::to($reservation->guest_email)->queue(new ReservationConfirmed($reservation));
-                } catch (\Throwable $e) {
-                    Log::error("Email Error: " . $e->getMessage());
-                }
+                $this->dispatchEmailSafely($reservation->guest_email, new ReservationConfirmed($reservation));
             }
 
             Log::info("Reservation Created: #{$reservation->id}");
 
-            DB::commit();
             return $reservation;
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw $e; 
-        }
+        });
     }
 
-    public function updateReservation(Reservation $reservation, array $data)
+    public function updateReservation(Reservation $reservation, array $data): Reservation
     {
-        // ... (rest of the code remains the same)
         $data['check_in_date'] = Carbon::parse($data['check_in_date'])->format('Y-m-d H:i:s');
         $data['check_out_date'] = Carbon::parse($data['check_out_date'])->format('Y-m-d H:i:s');
-
+        unset($data['g-recaptcha-response']);
         $this->checkAvailability(
-            $data['room_id'], 
-            $data['check_in_date'], 
+            $data['room_id'],
+            $data['check_in_date'],
             $data['check_out_date'],
-            $reservation->id 
+            $reservation->id
         );
 
-        DB::beginTransaction();
-        try {
-            $servicesData = $data['selected_services'] ?? [];
-            unset($data['selected_services']);
+        $servicesData = Arr::pull($data, 'selected_services', []);
 
+        return DB::transaction(function () use ($reservation, $data, $servicesData) {
             $reservation->update($data);
 
-            if($reservation->status == ReservationEnum::Cancelled){
-                try {
-                    Mail::to($reservation->guest_email)->queue(new ReservationCancellationMain($reservation));
-                } catch (\Throwable $e) {
-                    Log::error("Email Error: " . $e->getMessage());
-                }
-            }elseif($reservation->status == ReservationEnum::Confirmed){
-                try {
-                    Mail::to($reservation->guest_email)->queue(new ReservationReceiptEmail($reservation));
-                } catch (\Throwable $e) {
-                    Log::error("Email Error: " . $e->getMessage());
-                }
+            // Using strictly enum values to prevent typed bug errors on updates
+            $statusValue = $reservation->status instanceof ReservationEnum
+                ? $reservation->status->value
+                : $reservation->status;
+
+            if ($statusValue == ReservationEnum::Cancelled->value) {
+                $this->dispatchEmailSafely($reservation->guest_email, new ReservationCancellationMain($reservation));
+            } elseif ($statusValue == ReservationEnum::Confirmed->value) {
+                $this->dispatchEmailSafely($reservation->guest_email, new ReservationReceiptEmail($reservation));
             }
 
             $syncPayload = [];
@@ -156,15 +140,28 @@ class ReservationServices
                     'total_amount' => $item['price'] * $item['quantity']
                 ];
             }
-            
+
             $reservation->services()->sync($syncPayload);
 
-            DB::commit();
-            return $reservation;
+            Log::info("Reservation Updated: #{$reservation->id}");
 
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw $e;
+            return $reservation;
+        });
+    }
+
+    /**
+     * Dispatch an email safely, catching exceptions so the main thread doesn't crash.
+     */
+    private function dispatchEmailSafely(?string $email, Mailable $mailable): void
+    {
+        if (!$email) {
+            return;
+        }
+
+        try {
+            Mail::to($email)->queue($mailable);
+        } catch (\Throwable $e) {
+            Log::error("Email Error: " . $e->getMessage());
         }
     }
 }
