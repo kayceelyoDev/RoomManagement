@@ -23,7 +23,7 @@ class CreateNewUser implements CreatesNewUsers
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
         ], $this->errorMessages())->validate();
-
+    
         return User::create([
             'name' => $input['name'],
             'email' => $input['email'],
