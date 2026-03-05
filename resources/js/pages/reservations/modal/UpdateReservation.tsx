@@ -22,6 +22,7 @@ import { Room } from '@/types/Rooms';
 import { Service } from './AddReservation'; // Import types from AddReservation
 import { Reservation } from '../ReservationPage';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { differenceInCalendarDays, differenceInHours, isAfter } from 'date-fns';
 
 // --- Local Types ---
 interface SelectedServiceItem {
@@ -138,19 +139,30 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
 
     // --- Price Calculation Logic ---
     const priceDetails = useMemo(() => {
-        let roomTotal = 0; let nights = 0; let extraHours = 0;
+        let roomTotal = 0;
+        let nights = 0;
+        let extraHours = 0;
+        let lateHours = 0;
 
         if (data.check_in_date && data.check_out_date && selectedRoom) {
             const start = new Date(data.check_in_date);
             const end = new Date(data.check_out_date);
-            const diffMs = end.getTime() - start.getTime();
 
-            if (diffMs > 0) {
-                const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-                nights = Math.floor(totalHours / 24);
-                extraHours = totalHours % 24;
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
+                nights = differenceInCalendarDays(end, start);
+                if (nights === 0) nights = 1;
+
+                const policyCheckOut = new Date(end);
+                policyCheckOut.setHours(12, 0, 0, 0);
+
+                if (isAfter(end, policyCheckOut)) {
+                    lateHours = differenceInHours(end, policyCheckOut);
+                }
+
+                extraHours = lateHours;
                 const roomPrice = selectedRoom.room_category?.price ?? 0;
                 const hourlySurcharge = roomPrice * 0.10;
+
                 roomTotal = (nights * roomPrice) + (extraHours * hourlySurcharge);
             }
         }
@@ -172,27 +184,18 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('🔵 FORM SUBMIT TRIGGERED', {
-            reservationId: reservation.id,
-            formData: data,
-            url: reservationRoute.update.url(String(reservation.id)),
-            method: 'PUT'
-        });
 
         put(reservationRoute.update.url(String(reservation.id)), {
             onSuccess: () => {
-                console.log('✅ SUCCESS - Request completed');
                 onClose();
             },
             onError: (errors) => {
-                console.error('❌ ERROR - Form validation failed:', errors);
                 // if server demands captcha, show widget
                 if (errors && errors['g-recaptcha-response']) {
                     setRequiresCaptcha(true);
                 }
             },
             onFinish: () => {
-                console.log('🏁 FINISH - Request finished');
                 // clear recaptcha token when finished to avoid stale value
                 setData('g-recaptcha-response', '');
             }

@@ -195,12 +195,7 @@ class ReservationServices
             'room_id' => $data['room_id']
         ]);
 
-        $this->checkAvailability(
-            $data['room_id'],
-            $data['check_in_date'],
-            $data['check_out_date'],
-            $reservation->id
-        );
+        
 
         $servicesData = Arr::pull($data, 'selected_services', []);
 
