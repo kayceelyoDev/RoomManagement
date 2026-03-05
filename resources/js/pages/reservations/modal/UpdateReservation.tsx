@@ -1,5 +1,5 @@
 import { Dialog, Transition } from '@headlessui/react';
-import { Fragment, useEffect, useMemo } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import {
     X,
@@ -21,6 +21,7 @@ import reservationRoute from '@/routes/reservation';
 import { Room } from '@/types/Rooms';
 import { Service } from './AddReservation'; // Import types from AddReservation
 import { Reservation } from '../ReservationPage';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 // --- Local Types ---
 interface SelectedServiceItem {
@@ -39,6 +40,8 @@ interface Props {
 
 export default function UpdateReservation({ reservation, rooms = [], services = [], isOpen, onClose }: Props) {
 
+    const [requiresCaptcha, setRequiresCaptcha] = useState(false);
+
     // 1. Initialize Form with Fallback Price Logic
     const { data, setData, put, processing, errors, reset } = useForm({
         room_id: reservation.room_id.toString(),
@@ -49,6 +52,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
         check_out_date: reservation.check_out_date ? reservation.check_out_date.slice(0, 16).replace(' ', 'T') : '',
         status: reservation.status,
         reservation_amount: reservation.reservation_amount,
+        'g-recaptcha-response': '' as string,
         
         // FIX: Map existing services and ensure PRICE is valid
         selected_services: (reservation.services || []).map(s => {
@@ -78,6 +82,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                 check_out_date: reservation.check_out_date.slice(0, 16).replace(' ', 'T'),
                 status: reservation.status,
                 reservation_amount: reservation.reservation_amount,
+                'g-recaptcha-response': '',
                 // RE-APPLY THE PRICE FIX HERE TO0
                 selected_services: (reservation.services || []).map(s => {
                     const masterService = services.find(ms => ms.id === s.id);
@@ -89,6 +94,7 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                     };
                 }) as SelectedServiceItem[],
             });
+            setRequiresCaptcha(false);
         }
     }, [reservation, isOpen]);
 
@@ -96,6 +102,14 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
         rooms.find(r => String(r.id) === String(data.room_id)),
         [data.room_id, rooms]
     );
+
+    // show captcha widget when validation error is present (mirrors AddReservation)
+    useEffect(() => {
+        // @ts-ignore
+        if (errors['g-recaptcha-response']) {
+            setRequiresCaptcha(true);
+        }
+    }, [errors['g-recaptcha-response']]);
 
     // --- Service Logic ---
     const toggleService = (service: Service) => {
@@ -158,8 +172,30 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        console.log('🔵 FORM SUBMIT TRIGGERED', {
+            reservationId: reservation.id,
+            formData: data,
+            url: reservationRoute.update.url(String(reservation.id)),
+            method: 'PUT'
+        });
+
         put(reservationRoute.update.url(String(reservation.id)), {
-            onSuccess: () => onClose(),
+            onSuccess: () => {
+                console.log('✅ SUCCESS - Request completed');
+                onClose();
+            },
+            onError: (errors) => {
+                console.error('❌ ERROR - Form validation failed:', errors);
+                // if server demands captcha, show widget
+                if (errors && errors['g-recaptcha-response']) {
+                    setRequiresCaptcha(true);
+                }
+            },
+            onFinish: () => {
+                console.log('🏁 FINISH - Request finished');
+                // clear recaptcha token when finished to avoid stale value
+                setData('g-recaptcha-response', '');
+            }
         });
     };
 
@@ -289,9 +325,9 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                 >
                                                     <option value="pending">Pending</option>
                                                     <option value="confirmed">Confirmed</option>
-                                                    <option value="cancelled">Cancelled</option>
                                                     <option value="checked_in">Checked In</option>
                                                     <option value="checked_out">Checked Out</option>
+                                                    <option value="cancelled">Cancelled</option>
                                                 </select>
                                                 <ErrorMessage message={errors.status} />
                                             </div>
@@ -353,6 +389,24 @@ export default function UpdateReservation({ reservation, rooms = [], services = 
                                                 )}
                                             </div>
                                         </div>
+                                    {/* Conditionally Render Google reCAPTCHA v2 */}
+                                                                                    {requiresCaptcha && (
+                                                                                        <div className="pt-2 border-t border-border mt-2">
+                                                                                            <label className="text-xs font-medium mb-2 block text-orange-500">Security Verification Required</label>
+                                                                                            <p className="text-[10px] text-muted-foreground mb-2">High request volume detected. Please verify you are human.</p>
+                                                                                            <ReCAPTCHA
+                                                                                                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                                                                                onChange={(token) => setData('g-recaptcha-response', token || '')}
+                                                                                            />
+                                                                                            {/* @ts-ignore */}
+                                                                                            {errors['g-recaptcha-response'] && (
+                                                                                                <p className="text-sm text-destructive mt-1 font-medium">
+                                                                                                    {/* @ts-ignore */}
+                                                                                                    {errors['g-recaptcha-response']}
+                                                                                                </p>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
                                     </form>
                                 </div>
 

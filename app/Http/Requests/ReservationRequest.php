@@ -40,7 +40,7 @@ class ReservationRequest extends FormRequest
             'check_out_date' => ['required', 'date', 'after:check_in_date'], // Must be strictly AFTER check-in
 
             // 3. Status & Amount
-            'status' => ['required', 'in:pending,confirmed,cancelled,completed'], // Restrict to valid statuses
+            'status' => ['required', 'in:pending,confirmed,cancelled,checked_in,checked_out'], // Restrict to valid statuses
             'reservation_amount' => ['required', 'numeric', 'min:0'],
 
             // 4. Services (The new array structure)
