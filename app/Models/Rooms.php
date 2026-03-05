@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Rooms extends Model
 {
-    //
+
    protected $fillable = [
         'room_categories_id',
         'room_name',

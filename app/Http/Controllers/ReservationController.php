@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -104,6 +105,15 @@ class ReservationController extends Controller
 		if (Gate::allows('acces-guest')) {
 			$data['guest_email'] = $user?->email;
 		}
+
+		$key = 'reservation-create:' . ($user?->id ?: $request->ip());
+
+		if (RateLimiter::tooManyAttempts($key, 3)) {
+			$seconds = RateLimiter::availableIn($key);
+			return redirect()->back()->with('error', "Too many reservation attempts. Please try again in {$seconds} seconds.");
+		}
+
+		RateLimiter::hit($key, 60); // Increment counter, expires in 60 seconds
 
 		// Pass the data to the service
 		$services->createReservation($data);
