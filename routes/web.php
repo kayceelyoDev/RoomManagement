@@ -30,6 +30,8 @@ Route::middleware(['throttle:api'])->group(function () {
         Route::resource('services', ServicesController::class);
         Route::resource('checkin', CheckInController::class);
         Route::resource('checkout', CheckoutController::class);
+        Route::get('/api/dashboard/reservations', [DashboardController::class, 'getCalendarReservations']);
+        Route::get('/api/dashboard/reservations/date', [DashboardController::class, 'getReservationsForSpecificDate']);
         Route::resource('usermanagement', UserController::class)->middleware('can:manage-user');
     });
 

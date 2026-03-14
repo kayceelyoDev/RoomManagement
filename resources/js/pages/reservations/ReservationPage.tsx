@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import Pagination from '@/Components/Pagination';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import reservationRoute from '@/routes/reservation';
@@ -316,6 +317,10 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-center">
+                        <Pagination links={reservations.links} />
                     </div>
                 </div>
             </div>

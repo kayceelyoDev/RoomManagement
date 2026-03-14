@@ -7,13 +7,20 @@ use App\Mail\ReservationCancellationMain;
 use App\Mail\ReservationConfirmed;
 use App\Mail\ReservationReceiptEmail;
 use App\Models\Reservation;
+use App\Models\Rooms;
+use App\Models\Services;
 use Exception;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Mail\Mailable;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class ReservationServices
@@ -86,8 +93,28 @@ class ReservationServices
         }
     }
 
-    public function createReservation(array $data): Reservation
+    public function createReservation(array $data, ?string $ip = null): Reservation
     {
+        $user = Auth::user();
+
+        if ($ip) {
+            $key = 'reservation-create:' . ($user?->id ?: $ip);
+
+            if (RateLimiter::tooManyAttempts($key, 3)) {
+                $seconds = RateLimiter::availableIn($key);
+                throw ValidationException::withMessages([
+                    'rate_limit' => "Too many reservation attempts. Please try again in {$seconds} seconds."
+                ]);
+            }
+
+            RateLimiter::hit($key, 60);
+        }
+
+        $data['user_id'] = $user?->id;
+        if (Gate::allows('acces-guest')) {
+            $data['guest_email'] = $user?->email;
+        }
+
         Log::info('Creating new reservation', [
             'guest_name' => $data['guest_name'] ?? 'N/A',
             'room_id' => $data['room_id'] ?? 'N/A',
@@ -259,6 +286,82 @@ class ReservationServices
 
             return $reservation;
         });
+    }
+
+    public function getPaginatedReservations(array $filters): LengthAwarePaginator
+    {
+        $search = $filters['search'] ?? null;
+
+        return Reservation::query()
+            ->with([
+                'room:id,room_name,room_categories_id',
+                'services:id,services_name'
+            ])
+            ->when($search, function ($query, string $term) {
+                $searchTerm = '%' . strtolower($term) . '%';
+                $query->where(function ($q) use ($searchTerm, $term) {
+                    $q->whereRaw('LOWER(guest_name) LIKE ?', [$searchTerm])
+                        ->orWhere('contact_number', 'like', "%{$term}%")
+                        ->orWhereHas('room', fn($subQ) => $subQ->whereRaw('LOWER(room_name) LIKE ?', [$searchTerm]));
+                });
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+    }
+
+    public function getDashboardStats(): array
+    {
+        $today = Carbon::today();
+
+        $aggregates = Reservation::toBase()
+            ->selectRaw("SUM(CASE WHEN status != ? THEN reservation_amount ELSE 0 END) as total_revenue", [ReservationEnum::Cancelled->value])
+            ->selectRaw("COUNT(CASE WHEN status = ? THEN 1 END) as pending_count", [ReservationEnum::Pending->value])
+            ->first();
+
+        $arrivals = Reservation::query()
+            ->whereDate('check_in_date', $today)
+            ->where('status', '!=', ReservationEnum::Cancelled->value)
+            ->count();
+
+        $departures = Reservation::query()
+            ->whereDate('check_out_date', $today)
+            ->where('status', '!=', ReservationEnum::Cancelled->value)
+            ->count();
+
+        return [
+            'total_revenue' => (float) ($aggregates->total_revenue ?? 0),
+            'arrivals_today' => (int) $arrivals,
+            'departures_today' => (int) $departures,
+            'pending_count' => (int) ($aggregates->pending_count ?? 0),
+        ];
+    }
+
+    public function getRoomsForAdmin(): Collection
+    {
+        return Rooms::select('id', 'room_name', 'room_categories_id', 'max_extra_person', 'status')
+            ->with([
+                'roomCategory',
+                'reservations' => fn($query) => $query->select('id', 'room_id', 'check_in_date', 'check_out_date', 'status')
+                    ->where('status', '!=', ReservationEnum::Cancelled->value)
+                    ->whereDate('check_out_date', '>=', now()->toDateString())
+            ])
+            ->get();
+    }
+
+    public function getServicesForAdmin(): Collection
+    {
+        return Services::select('id', 'services_name', 'services_price')->get();
+    }
+
+    public function deleteReservation(Reservation $reservation): void
+    {
+        DB::transaction(function () use ($reservation) {
+            $reservation->services()->detach();
+            $reservation->delete();
+        });
+
+        Log::info("Reservation #{$reservation->id} deleted by Admin " . Auth::id());
     }
 
     /**
