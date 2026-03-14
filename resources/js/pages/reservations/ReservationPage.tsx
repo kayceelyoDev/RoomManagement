@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import Pagination from '@/components/Pagination';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import reservationRoute from '@/routes/reservation';
@@ -9,7 +10,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { 
     CheckCircle, Clock, Edit, Search, Trash2, 
     RefreshCw, Power, PowerOff, Calendar, Filter, 
-    TrendingUp, LogIn, LogOut, AlertCircle
+    LogIn, LogOut, AlertCircle
 } from 'lucide-react';
 import React, { useEffect, useState, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
@@ -161,15 +162,7 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
                     </div>
 
                     {/* --- ANALYTICS SECTION --- */}
-                    <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="p-2 bg-primary/10 rounded-lg text-primary"><TrendingUp size={20} /></div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Est. Revenue</span>
-                            </div>
-                            <p className="text-2xl font-serif font-bold">₱{(stats?.total_revenue || 0).toLocaleString()}</p>
-                        </div>
-
+                    <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                         <div className="bg-card p-5 rounded-2xl border border-border shadow-sm">
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="p-2 bg-accent/20 rounded-lg text-accent-foreground"><LogIn size={20} /></div>
@@ -324,6 +317,10 @@ export default function ReservationPage({ rooms, services, reservations, stats, 
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-center">
+                        <Pagination links={reservations.links} />
                     </div>
                 </div>
             </div>

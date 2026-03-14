@@ -5,10 +5,15 @@ namespace App\Providers;
 use App\Enum\roles;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -29,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Add Strict Model checking (Protects against mass assignment and lazy-loading bugs)
         // Automatically turns off in production, but guarantees you don't commit vulnerable queries locally.
-        Model::shouldBeStrict(! app()->isProduction());
+        Model::shouldBeStrict(!app()->isProduction());
 
         Gate::define('manage-rooms', fn(User $user) => in_array($user->role, [
             roles::ADMIN,
@@ -59,6 +64,15 @@ class AppServiceProvider extends ServiceProvider
                 ->symbols()
                 ->uncompromised();
         });
+
+        //rate limit for api routes
+
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+        
+
+
     }
 
     protected function configureDefaults(): void
@@ -71,13 +85,13 @@ class AppServiceProvider extends ServiceProvider
 
         Password::defaults(
             fn(): ?Password => app()->isProduction()
-                ? Password::min(12)
+            ? Password::min(12)
                 ->mixedCase()
                 ->letters()
                 ->numbers()
                 ->symbols()
                 ->uncompromised()
-                : null
+            : null
         );
     }
 }

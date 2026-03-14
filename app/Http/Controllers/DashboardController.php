@@ -8,6 +8,7 @@ use App\Models\Rooms;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -35,6 +36,26 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function getReservationsForSpecificDate(Request $request)
+    {
+        $request->validate(['date' => 'required|date']);
+        $date = Carbon::parse($request->query('date'))->format('Y-m-d');
+
+        // Fetch reservations that are checking in, checking out, or staying over on this exact date
+        $reservations = Reservation::with('room:id,room_name')
+            ->where('status', '!=', ReservationEnum::Cancelled)
+            ->where(function ($query) use ($date) {
+                $query->whereDate('check_in_date', $date)
+                    ->orWhereDate('check_out_date', $date)
+                    ->orWhere(function ($q) use ($date) {
+                        $q->whereDate('check_in_date', '<', $date)
+                          ->whereDate('check_out_date', '>', $date);
+                    });
+            })
+            ->get(['id', 'guest_name', 'check_in_date', 'check_out_date', 'status', 'room_id']);
+
+        return response()->json($reservations);
+    }
 
 
     private function getOperationalStats()
@@ -125,6 +146,26 @@ class DashboardController extends Controller
             'total' => $currentRevenue,
             'growth' => $revenueGrowth
         ];
+    }
+
+    // In your DashboardController.php
+    public function getCalendarReservations(Request $request)
+    {
+        $start = $request->query('start');
+        $end = $request->query('end');
+
+        // Fetch all reservations that overlap with the current calendar view bounds
+        $reservations = Reservation::with('room')
+            ->whereBetween('check_in_date', [$start, $end])
+            ->orWhereBetween('check_out_date', [$start, $end])
+            ->orWhere(function ($query) use ($start, $end) {
+                // Include reservations where they started before the month, and checkout after the month
+                $query->where('check_in_date', '<=', $start)
+                    ->where('check_out_date', '>=', $end);
+            })
+            ->get(['id', 'guest_name', 'check_in_date', 'check_out_date', 'status', 'room_id']);
+
+        return response()->json($reservations);
     }
 
     private function getCategoryPerformance()

@@ -2,15 +2,22 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { 
     DoorOpen, CalendarDays, ArrowRightLeft, 
-    Hammer, RefreshCw, CheckCircle2, XCircle
+    Hammer, RefreshCw, CheckCircle2, XCircle,
+    ChevronLeft, ChevronRight, Calendar as CalendarIcon
 } from 'lucide-react';
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, 
     Tooltip, ResponsiveContainer
 } from 'recharts';
-import { format, parseISO, isSameDay } from 'date-fns';
+import { 
+    format, parseISO, isSameDay, startOfMonth, endOfMonth, 
+    startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, 
+    isToday, addMonths, subMonths, startOfDay
+} from 'date-fns';
 import { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
+import axios from 'axios';
+import { getCalendarReservations, getReservationsForSpecificDate } from '@/actions/App/Http/Controllers/DashboardController';
 
 interface Props {
     stats: {
@@ -37,11 +44,97 @@ export default function Dashboard({ stats, roomStatus, guestMovements, bookingVo
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    // --- CALENDAR STATE & LOGIC ---
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [calendarReservations, setCalendarReservations] = useState<any[]>([]);
+    const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+    
+    // NEW: State for specific day details
+    const [dayReservations, setDayReservations] = useState<any[]>([]);
+    const [isLoadingDay, setIsLoadingDay] = useState(false);
+
+    // Fetch whole month to render indicators on the calendar grid
+    const fetchMonthReservations = useCallback(async (date: Date) => {
+        setIsLoadingCalendar(true);
+        try {
+            const start = format(startOfWeek(startOfMonth(date)), 'yyyy-MM-dd');
+            const end = format(endOfWeek(endOfMonth(date)), 'yyyy-MM-dd');
+            
+            // WAYFINDER: Generate the endpoint with your query parameters
+            const endpoint = getCalendarReservations({ query: { start, end } });
+            
+            // Pass the generated { url, method } object directly to axios
+            const response = await axios(endpoint);
+            
+            setCalendarReservations(response.data);
+        } catch (error) {
+            console.error("Failed to fetch calendar reservations:", error);
+        } finally {
+            setIsLoadingCalendar(false);
+        }
+    }, []);
+
+    const fetchDayReservations = useCallback(async (date: Date) => {
+        setIsLoadingDay(true);
+        try {
+            const formattedDate = format(date, 'yyyy-MM-dd');
+            
+            // WAYFINDER: Generate the endpoint for the specific date
+            const endpoint = getReservationsForSpecificDate({ query: { date: formattedDate } });
+            
+            // Pass the generated { url, method } object directly to axios
+            const response = await axios(endpoint);
+            
+            setDayReservations(response.data);
+        } catch (error) {
+            console.error("Failed to fetch specific day reservations:", error);
+        } finally {
+            setIsLoadingDay(false);
+        }
+    }, []);
+
+    // Listen for month changes
+    useEffect(() => {
+        fetchMonthReservations(currentMonth);
+    }, [currentMonth, fetchMonthReservations]);
+
+    // Listen for selected date changes and fetch data
+    useEffect(() => {
+        fetchDayReservations(selectedDate);
+    }, [selectedDate, fetchDayReservations]);
+
+    const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+    const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
+
+    const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+    // Used strictly for calendar grid indicators
+    const getReservationsForDay = (day: Date) => {
+        return calendarReservations.filter(res => {
+            const checkIn = startOfDay(parseISO(res.check_in_date));
+            const checkOut = startOfDay(parseISO(res.check_out_date));
+            const current = startOfDay(day);
+            return current >= checkIn && current < checkOut;
+        });
+    };
+    
+    // Process server-fetched day details for the right-hand panel
+    const selectedDayCheckIns = dayReservations.filter(res => isSameDay(parseISO(res.check_in_date), selectedDate));
+    const selectedDayCheckOuts = dayReservations.filter(res => isSameDay(parseISO(res.check_out_date), selectedDate));
+    const selectedDayStaying = dayReservations.filter(res => 
+        !isSameDay(parseISO(res.check_in_date), selectedDate) && 
+        !isSameDay(parseISO(res.check_out_date), selectedDate)
+    );
+
     const refreshData = useCallback(() => {
         setIsRefreshing(true);
         router.reload({
-            // EFFICIENCY: Only fetch these specific props from the server
-            // This skips layout/user/nav data re-fetching
             only: ['stats', 'roomStatus', 'guestMovements', 'bookingVolume'],
             preserveScroll: true,
             preserveState: true,
@@ -55,7 +148,6 @@ export default function Dashboard({ stats, roomStatus, guestMovements, bookingVo
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isAutoRefresh) {
-            // Poll every 15 seconds (Fast enough for Ops, slow enough for server)
             interval = setInterval(refreshData, 15000);
         }
         return () => clearInterval(interval);
@@ -192,6 +284,127 @@ export default function Dashboard({ stats, roomStatus, guestMovements, bookingVo
                         <div className="mt-8 pt-6 border-t border-border flex items-center justify-between">
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Property Units</p>
                             <p className="text-lg font-serif font-bold">{totalRooms}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- CALENDAR OVERVIEW --- */}
+                <div className="grid gap-6 grid-cols-1 xl:grid-cols-3">
+                    {/* Calendar View */}
+                    <div className="xl:col-span-2 bg-card rounded-2xl border border-border p-6 shadow-sm overflow-hidden flex flex-col relative">
+                        {isLoadingCalendar && <LoadingOverlay />}
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-serif font-bold text-lg flex items-center gap-2">
+                                <CalendarIcon className="size-5 text-primary" />
+                                Reservation Calendar
+                            </h3>
+                            <div className="flex items-center gap-4">
+                                <button onClick={prevMonth} className="p-1 hover:bg-muted rounded-full transition-colors"><ChevronLeft size={20}/></button>
+                                <span className="font-bold w-32 text-center text-sm">{format(currentMonth, 'MMMM yyyy')}</span>
+                                <button onClick={nextMonth} className="p-1 hover:bg-muted rounded-full transition-colors"><ChevronRight size={20}/></button>
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-7 gap-1 mb-2">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                <div key={day} className="text-center text-xs font-bold text-muted-foreground uppercase tracking-wider py-2">
+                                    {day}
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="grid grid-cols-7 gap-1 flex-1">
+                            {calendarDays.map((day, idx) => {
+                                const dayRes = getReservationsForDay(day);
+                                const isSelected = isSameDay(day, selectedDate);
+                                const isCurrentMonth = isSameMonth(day, currentMonth);
+                                
+                                return (
+                                    <div 
+                                        key={idx} 
+                                        onClick={() => setSelectedDate(day)}
+                                        className={`min-h-[80px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col gap-1
+                                            ${!isCurrentMonth ? 'opacity-40 bg-muted/30' : 'bg-card'}
+                                            ${isSelected ? 'border-primary ring-1 ring-primary/20 shadow-md' : 'border-transparent hover:border-border'}
+                                            ${isToday(day) && !isSelected ? 'bg-primary/5 border-primary/20' : ''}
+                                        `}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <span className={`text-sm font-bold ${isToday(day) ? 'text-primary' : 'text-foreground'}`}>
+                                                {format(day, 'd')}
+                                            </span>
+                                            {dayRes.length > 0 && (
+                                                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold">
+                                                    {dayRes.length} Res
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    
+                    {/* Day Details */}
+                    <div className="bg-card rounded-2xl border border-border p-6 shadow-sm overflow-hidden flex flex-col h-full min-h-[400px] relative">
+                        {isLoadingDay && <LoadingOverlay />}
+                        <h3 className="font-serif font-bold text-lg mb-2">
+                            {format(selectedDate, 'MMMM d, yyyy')}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mb-6">Daily Activity Overview</p>
+                        
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-6 no-scrollbar">
+                            <div>
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-green-600 mb-3 flex items-center gap-2">
+                                    <ChevronRight size={14}/> Arrivals ({selectedDayCheckIns.length})
+                                </h4>
+                                <div className="space-y-3">
+                                    {selectedDayCheckIns.length > 0 ? selectedDayCheckIns.map(res => (
+                                        <div key={res.id} className="p-3 bg-muted/30 rounded-xl border border-border text-sm">
+                                            <div className="font-bold text-foreground">{res.guest_name || 'Guest'}</div>
+                                            <div className="flex justify-between items-center mt-1 text-muted-foreground text-xs">
+                                                <span>{res.room?.room_name || 'Unassigned'}</span>
+                                                <span className="text-[10px] font-bold uppercase">{format(parseISO(res.check_in_date), 'h:mm a')}</span>
+                                            </div>
+                                        </div>
+                                    )) : <p className="text-xs text-muted-foreground italic">No arrivals scheduled.</p>}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-3 flex items-center gap-2">
+                                    <ChevronLeft size={14}/> Departures ({selectedDayCheckOuts.length})
+                                </h4>
+                                <div className="space-y-3">
+                                    {selectedDayCheckOuts.length > 0 ? selectedDayCheckOuts.map(res => (
+                                        <div key={res.id} className="p-3 bg-muted/30 rounded-xl border border-border text-sm">
+                                            <div className="font-bold text-foreground">{res.guest_name || 'Guest'}</div>
+                                            <div className="flex justify-between items-center mt-1 text-muted-foreground text-xs">
+                                                <span>{res.room?.room_name || 'Unassigned'}</span>
+                                                <span className="text-[10px] font-bold uppercase">{format(parseISO(res.check_out_date), 'h:mm a')}</span>
+                                            </div>
+                                        </div>
+                                    )) : <p className="text-xs text-muted-foreground italic">No departures scheduled.</p>}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-primary mb-3 flex items-center gap-2">
+                                    <CalendarIcon size={14}/> Staying Over ({selectedDayStaying.length})
+                                </h4>
+                                <div className="space-y-3">
+                                    {selectedDayStaying.length > 0 
+                                        ? selectedDayStaying.map(res => (
+                                        <div key={res.id} className="p-3 bg-muted/30 rounded-xl border border-border text-sm">
+                                            <div className="font-bold text-foreground">{res.guest_name || 'Guest'}</div>
+                                            <div className="flex justify-between items-center mt-1 text-muted-foreground text-xs">
+                                                <span>{res.room?.room_name || 'Unassigned'}</span>
+                                                <span>Checkout: {format(parseISO(res.check_out_date), 'MMM d')}</span>
+                                            </div>
+                                        </div>
+                                    )) : <p className="text-xs text-muted-foreground italic">No continuing stays.</p>}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
