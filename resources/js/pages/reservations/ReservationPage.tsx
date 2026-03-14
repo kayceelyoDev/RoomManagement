@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import Pagination from '@/Components/Pagination';
+import Pagination from '@/components/Pagination';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import reservationRoute from '@/routes/reservation';
