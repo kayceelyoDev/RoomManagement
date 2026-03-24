@@ -14,6 +14,7 @@ interface RoomCategory {
     room_category: string;
     price: number;
     room_capacity: number;
+    max_extra_bed: number;
 }
 
 interface Props {
@@ -21,14 +22,14 @@ interface Props {
 }
 
 // --- Reusable Modal Component ---
-function CategoryFormModal({ 
-    isOpen, 
-    onClose, 
-    categoryToEdit = null 
-}: { 
-    isOpen: boolean; 
-    onClose: () => void; 
-    categoryToEdit?: RoomCategory | null; 
+function CategoryFormModal({
+    isOpen,
+    onClose,
+    categoryToEdit = null
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    categoryToEdit?: RoomCategory | null;
 }) {
     const isEditMode = !!categoryToEdit;
 
@@ -36,6 +37,7 @@ function CategoryFormModal({
         room_category: '',
         price: '',
         room_capacity: '',
+        max_extra_bed: '',
     });
 
     useEffect(() => {
@@ -46,6 +48,7 @@ function CategoryFormModal({
                     room_category: categoryToEdit.room_category,
                     price: categoryToEdit.price.toString(),
                     room_capacity: categoryToEdit.room_capacity.toString(),
+                    max_extra_bed: categoryToEdit.max_extra_bed.toString(),
                 });
             } else {
                 reset();
@@ -73,13 +76,13 @@ function CategoryFormModal({
 
                 <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
-                        <Transition.Child 
-                            as={Fragment} 
-                            enter="ease-out duration-300" 
-                            enterFrom="opacity-0 scale-95" 
-                            enterTo="opacity-100 scale-100" 
-                            leave="ease-in duration-200" 
-                            leaveFrom="opacity-100 scale-100" 
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0 scale-95"
+                            enterTo="opacity-100 scale-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
                             <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-card p-6 shadow-2xl transition-all border border-border">
@@ -139,6 +142,21 @@ function CategoryFormModal({
                                             />
                                             {errors.room_capacity && <p className="text-xs font-bold text-destructive mt-1">{errors.room_capacity}</p>}
                                         </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="max_extra_bed" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                                                Max Extra Bed
+                                            </Label>
+                                            <Input
+                                                id="max_extra_bed"
+                                                type="number"
+                                                value={data.max_extra_bed}
+                                                onChange={(e) => setData('max_extra_bed', e.target.value)}
+                                                placeholder="Max extra bed"
+                                                className="bg-background border-border h-11"
+                                            />
+                                            {errors.max_extra_bed && <p className="text-xs font-bold text-destructive mt-1">{errors.max_extra_bed}</p>}
+                                        </div>
                                     </div>
 
                                     <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3">
@@ -185,7 +203,7 @@ export default function RoomCategoryPage({ categories = [] }: Props) {
 
             <div className="min-h-screen bg-background py-6 md:py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    
+
                     {/* Responsive Header */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
                         <div className="w-full sm:w-auto">
@@ -196,8 +214,8 @@ export default function RoomCategoryPage({ categories = [] }: Props) {
                                 Define types of rooms, their prices, and capacities.
                             </p>
                         </div>
-                        <Button 
-                            onClick={openAddModal} 
+                        <Button
+                            onClick={openAddModal}
                             className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-11"
                         >
                             <Plus className="size-4 mr-2" /> Add Category
@@ -241,18 +259,18 @@ export default function RoomCategoryPage({ categories = [] }: Props) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">
                                                     <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            onClick={() => openEditModal(cat)} 
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => openEditModal(cat)}
                                                             className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                                                         >
                                                             <Edit className="size-4" />
                                                         </Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            onClick={() => deleteCategory(cat.id)} 
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => deleteCategory(cat.id)}
                                                             className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                                                         >
                                                             <Trash2 className="size-4" />
@@ -278,10 +296,10 @@ export default function RoomCategoryPage({ categories = [] }: Props) {
                 </div>
             </div>
 
-            <CategoryFormModal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                categoryToEdit={editingCategory} 
+            <CategoryFormModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                categoryToEdit={editingCategory}
             />
         </AppLayout>
     );

@@ -21,15 +21,12 @@ class ReservationRequest extends FormRequest
      */
     public function rules(): array
     {
-        $spamKey = 'booking-spam:' . request()->ip();
-        $isSpamming = \Illuminate\Support\Facades\RateLimiter::attempts($spamKey) >= 3;
-
-        // Increment the attempt count for tracking spam
-        \Illuminate\Support\Facades\RateLimiter::hit($spamKey, 3600);
+        $user = $this->user();
+        $isGuest = $user?->role === 'guest';
 
         $rules = [
             // 1. Basic Reservation Details
-            'room_id' => ['required', 'exists:rooms,id'], // Ensures the room actually exists
+            'room_id' => ['required', 'exists:rooms,id'],
             'contact_number' => ['required', 'digits:11'],
             'guest_email' => ['nullable', 'email'],
             'total_guest' => ['required', 'integer', 'min:1'],
@@ -37,25 +34,21 @@ class ReservationRequest extends FormRequest
 
             // 2. Date Logic
             'check_in_date' => ['required', 'date'],
-            'check_out_date' => ['required', 'date', 'after:check_in_date'], // Must be strictly AFTER check-in
+            'check_out_date' => ['required', 'date', 'after:check_in_date'],
 
             // 3. Status & Amount
-            'status' => ['required', 'in:pending,confirmed,cancelled,checked_in,checked_out'], // Restrict to valid statuses
+            'status' => ['required', 'in:pending,confirmed,cancelled,checked_in,checked_out'],
             'reservation_amount' => ['required', 'numeric', 'min:0'],
 
-            // 4. Services (The new array structure)
-            // Expecting data like: selected_services: [{id: 1, quantity: 2, price: 500}, ...]
+            // 4. Services
             'selected_services' => ['nullable', 'array'],
-
-            // Validate each item INSIDE the array
-            'selected_services.*.id' => ['required', 'exists:services,id'], // Service must exist in DB
+            'selected_services.*.id' => ['required', 'exists:services,id'],
             'selected_services.*.quantity' => ['required', 'integer', 'min:1'],
             'selected_services.*.price' => ['required', 'numeric', 'min:0'],
         ];
 
-        // Conditional Security Add-On
-        // Demand Captcha if they trip the limit, OR if they proactively sent a captcha token
-        if ($isSpamming || count(request()->allFiles()) > 0 || request()->has('g-recaptcha-response')) {
+        // Only require CAPTCHA for guests
+        if ($isGuest) {
             $rules['g-recaptcha-response'] = ['required', new Recaptcha()];
         }
 

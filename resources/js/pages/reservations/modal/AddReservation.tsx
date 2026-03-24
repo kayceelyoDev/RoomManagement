@@ -80,6 +80,7 @@ export default function AddReservation({
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [localError, setLocalError] = useState<string | null>(null);
+    const isGuest = role === 'guest';
     const [requiresCaptcha, setRequiresCaptcha] = useState(false);
 
     const isAdminOrStaff = ['admin', 'supperAdmin', 'staff'].includes(role || 'staff');
@@ -158,12 +159,23 @@ export default function AddReservation({
     }, [data.check_in_date, data.check_out_date, validReservations]);
 
     // --- CAPTCHA MONITOR ---
+    // Guests always need captcha; admin/staff/supperAdmin never do
     useEffect(() => {
+        if (isGuest) {
+            setRequiresCaptcha(true);
+        } else {
+            setRequiresCaptcha(false);
+        }
+    }, [isGuest]);
+
+    useEffect(() => {
+        // @ts-ignore
+        if (!isGuest) return;
         // @ts-ignore
         if (errors['g-recaptcha-response']) {
             setRequiresCaptcha(true);
         }
-    }, [errors['g-recaptcha-response']]);
+    }, [errors['g-recaptcha-response'], isGuest]);
 
     useEffect(() => {
         if (isOpen) {
@@ -557,7 +569,17 @@ export default function AddReservation({
 
                                                 {/* Extras */}
                                                 <div className="space-y-4">
-                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><Plus size={14} /> Extras</h4>
+                                                    <div className="flex flex-col gap-2">
+                                                        <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><Plus size={14} /> Extras</h4>
+                                                        {/* @ts-ignore */}
+                                                        {errors?.selected_services && (
+                                                            <div className="flex items-center gap-1.5 text-destructive text-xs font-bold bg-destructive/10 px-3 py-2 rounded-lg border border-destructive/20 animate-in fade-in zoom-in-95">
+                                                                <AlertCircle size={14} />
+                                                                {/* @ts-ignore */}
+                                                                {errors.selected_services}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                         {services.map(svc => {
                                                             const selected = data.selected_services.find(s => s.id === svc.id);
@@ -578,7 +600,7 @@ export default function AddReservation({
                                                         })}
                                                     </div>
                                                 </div>
-                                                
+
                                                 {/* Conditionally Render Google reCAPTCHA v2 */}
                                                 {requiresCaptcha && (
                                                     <div className="pt-2 border-t border-border mt-2">
@@ -597,7 +619,7 @@ export default function AddReservation({
                                                         )}
                                                     </div>
                                                 )}
-                                                
+
                                             </div>
                                         </div>
                                     )}
