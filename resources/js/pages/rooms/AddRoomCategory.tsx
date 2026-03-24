@@ -14,7 +14,7 @@ interface RoomCategory {
     room_category: string;
     price: number;
     room_capacity: number;
-    max_extra_bed: number;
+    max_extra_bed: number | null;
 }
 
 interface Props {
@@ -48,7 +48,7 @@ function CategoryFormModal({
                     room_category: categoryToEdit.room_category,
                     price: categoryToEdit.price.toString(),
                     room_capacity: categoryToEdit.room_capacity.toString(),
-                    max_extra_bed: categoryToEdit.max_extra_bed.toString(),
+                    max_extra_bed: categoryToEdit.max_extra_bed?.toString() || '',
                 });
             } else {
                 reset();
@@ -145,7 +145,7 @@ function CategoryFormModal({
 
                                         <div className="space-y-2">
                                             <Label htmlFor="max_extra_bed" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
-                                                Max Extra Bed
+                                                Max Extra Bed <span className="normal-case font-normal text-muted-foreground/60">(Optional)</span>
                                             </Label>
                                             <Input
                                                 id="max_extra_bed"
