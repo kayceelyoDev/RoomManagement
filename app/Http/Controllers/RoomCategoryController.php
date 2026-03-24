@@ -55,6 +55,7 @@ class RoomCategoryController extends Controller
         $validated = $request->validate([
             'room_category' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
+            'max_extra_bed' => ['required', 'integer', 'min:0'],
             'room_capacity' => ['required', 'integer', 'min:1'],
         ]);
 
@@ -89,6 +90,7 @@ class RoomCategoryController extends Controller
 
         $validated = $request->validate([
             'room_category' => ['required', 'string', 'max:255'],
+            'max_extra_bed' => ['required', 'integer', 'min:0'],
             'price' => ['required', 'numeric', 'min:0'],
             'room_capacity' => ['required', 'integer', 'min:1'],
         ]);

@@ -11,13 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('room_categories', function (Blueprint $table) {
-            $table->id();
-            $table->string('room_category');
-            $table->integer('price');
-            $table->integer('room_capacity');
-            
-            $table->timestamps();
+        Schema::table('room_categories', function (Blueprint $table) {
+            //
+            $table->integer('max_extra_bed')->nullable();
         });
     }
 
@@ -26,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('room_categories');
+        Schema::table('room_categories', function (Blueprint $table) {
+            //
+        });
     }
 };
