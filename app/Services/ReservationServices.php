@@ -93,8 +93,65 @@ class ReservationServices
         }
     }
 
+    public function checkServices(array $extraServices, int $roomId){
+
+        // Load the room with its category to access both limits
+        $room = Rooms::with('roomCategory')->find($roomId);
+        $maxExtraBed    = $room?->roomCategory?->max_extra_bed;   // from room_categories
+        $maxExtraPerson = $room?->max_extra_person;                // from rooms
+
+        $extraPersonQuantity = 0;
+        $extraBedQuantity    = 0;
+
+        foreach ($extraServices as $service) {
+            $serviceName = Services::where('id', $service['id'])->value('services_name');
+            if (!$serviceName) continue;
+
+            $nameLower = strtolower(trim($serviceName));
+            $qty       = (int) ($service['quantity'] ?? 1);
+
+            // Count "extra person" services
+            if (str_contains($nameLower, 'extra person')) {
+                $extraPersonQuantity += $qty;
+            }
+
+            // Count "extra bed" services
+            if (str_contains($nameLower, 'extra bed')) {
+                $extraBedQuantity += $qty;
+            }
+        }
+
+        Log::info("DEBUGGING_SERVICE_LIMITS", [
+            'maxExtraPerson'      => $maxExtraPerson,
+            'maxExtraBed'         => $maxExtraBed,
+            'extraPersonQuantity' => $extraPersonQuantity,
+            'extraBedQuantity'    => $extraBedQuantity,
+        ]);
+
+        // Enforce extra person limit (from rooms table)
+        if ($extraPersonQuantity > 0 && !is_null($maxExtraPerson) && $extraPersonQuantity > $maxExtraPerson) {
+            throw ValidationException::withMessages([
+                'selected_services' => [
+                    "Extra Person limit exceeded. This room allows a maximum of {$maxExtraPerson} extra person(s). You selected {$extraPersonQuantity}."
+                ]
+            ]);
+        }
+
+        // Enforce extra bed limit (from room_categories table)
+        if ($extraBedQuantity > 0 && !is_null($maxExtraBed) && $extraBedQuantity > $maxExtraBed) {
+            throw ValidationException::withMessages([
+                'selected_services' => [
+                    "Extra Bed limit exceeded. This room category allows a maximum of {$maxExtraBed} extra bed(s). You selected {$extraBedQuantity}."
+                ]
+            ]);
+        }
+
+        return true;
+    }
+
     public function createReservation(array $data, ?string $ip = null): Reservation
     {
+       
         $user = Auth::user();
 
         if ($ip) {
@@ -140,6 +197,8 @@ class ReservationServices
         );
 
         $servicesData = Arr::pull($data, 'selected_services', []);
+        
+        $this->checkServices($servicesData, $data['room_id']);
 
         Log::debug('Services data extracted', [
             'serviceCount' => count($servicesData),

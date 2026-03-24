@@ -13,6 +13,7 @@ class RoomCategory extends Model
         'room_category',
         'price',
         'room_capacity',
+        'max_extra_bed',
     ];
 
     public function rooms()
