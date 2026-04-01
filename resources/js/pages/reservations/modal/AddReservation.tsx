@@ -426,10 +426,40 @@ export default function AddReservation({
                                     {/* --- STEP 2: CALENDAR --- */}
                                     {step === 'calendar' && (
                                         <div className="flex flex-col h-full animate-in slide-in-from-right-8 duration-500 pb-4">
+                                            {/* Room Details Summary */}
+                                            <div className={`${gradientBg} border border-border rounded-2xl p-4 mb-6 shadow-sm`}>
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <div className="w-10 h-10 bg-primary/10 rounded-lg items-center justify-center text-primary flex">
+                                                        <Bed size={20} />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Room Selected</p>
+                                                        <p className="text-sm font-semibold text-foreground">{selectedRoom?.room_name}</p>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setStep('room')} 
+                                                        className="text-xs font-bold text-primary hover:bg-background px-2 py-1 rounded-lg transition-colors"
+                                                    >
+                                                        Change
+                                                    </button>
+                                                </div>
+                                                <div className="flex gap-4 pt-3 border-t border-border/50">
+                                                    <div className="flex-1">
+                                                        <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Base Capacity</p>
+                                                        <p className="text-lg font-bold text-primary">{selectedRoom?.room_category?.room_capacity || 0} pax</p>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Max Extra</p>
+                                                        <p className="text-lg font-bold text-blue-500">{selectedRoom?.max_extra_person || 0}</p>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Price/Night</p>
+                                                        <p className="text-lg font-bold text-emerald-500">₱{selectedRoom?.room_category?.price?.toLocaleString() || 0}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                                                <button onClick={() => setStep('room')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors p-2 -ml-2 rounded-lg hover:bg-muted self-start sm:self-auto">
-                                                    <ChevronLeft size={16} /> <span className="font-medium">Change Room</span>
-                                                </button>
                                                 <div className="flex items-center justify-between w-full sm:w-auto gap-4 bg-card border border-border rounded-xl p-1.5 pl-4 shadow-sm">
                                                     <span className="font-serif text-base font-bold text-foreground flex-1 text-center sm:min-w-[140px]">
                                                         {format(currentMonth, 'MMMM yyyy')}
@@ -480,15 +510,43 @@ export default function AddReservation({
                                     {/* --- STEP 3: FORM --- */}
                                     {step === 'form' && (
                                         <div className="animate-in slide-in-from-right-8 duration-500 max-w-3xl mx-auto w-full pb-20 lg:pb-0">
-                                            <div className="bg-card border border-border rounded-2xl p-4 md:p-6 mb-6 flex items-center justify-between shadow-sm">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="hidden sm:flex w-12 h-12 bg-primary/10 rounded-xl items-center justify-center text-primary"><Bed size={24} /></div>
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Booking For</p>
-                                                        <h3 className="text-lg md:text-xl font-serif font-bold text-foreground">{selectedRoom?.room_name}</h3>
+                                            {/* Room Details Card */}
+                                            <div className={`${gradientBg} border border-border rounded-2xl p-4 md:p-6 mb-6 shadow-sm`}>
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div className="flex items-center gap-4 flex-1">
+                                                        <div className="w-14 h-14 bg-primary/10 rounded-xl items-center justify-center text-primary flex">
+                                                            <Bed size={28} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Selected Room</p>
+                                                            <h3 className="text-xl md:text-2xl font-serif font-bold text-foreground">{selectedRoom?.room_name}</h3>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setStep('room')} 
+                                                        className="text-xs font-bold text-primary border-b border-primary/20 pb-0.5 hover:border-primary transition-colors"
+                                                    >
+                                                        Change
+                                                    </button>
+                                                </div>
+
+                                                {/* Room Capacity Info */}
+                                                <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border/50">
+                                                    <div className="text-center">
+                                                        <p className="text-xs text-muted-foreground font-semibold mb-1">Base Capacity</p>
+                                                        <p className="text-2xl font-bold text-primary">{selectedRoom?.room_category?.room_capacity || 0}</p>
+                                                        <p className="text-[10px] text-muted-foreground mt-1">Persons</p>
+                                                    </div>
+                                                    <div className="text-center border-l border-r border-border/50">
+                                                        <p className="text-xs text-muted-foreground font-semibold mb-1">Max Extra</p>
+                                                        <p className="text-2xl font-bold text-blue-500">{selectedRoom?.max_extra_person || 0}</p>
+                                                        <p className="text-[10px] text-muted-foreground mt-1">Persons</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-xs text-muted-foreground font-semibold mb-1">Price/Night</p>
+                                                        <p className="text-2xl font-bold text-emerald-500">₱{selectedRoom?.room_category?.price?.toLocaleString() || 0}</p>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => setStep('room')} className="text-xs font-bold text-primary border-b border-primary/20 pb-0.5">Change</button>
                                             </div>
 
                                             <div className="grid gap-6 md:gap-8">
@@ -546,12 +604,24 @@ export default function AddReservation({
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        {/* Capacity Display */}
                                                         <div className="space-y-1.5">
-                                                            <label className="text-xs font-medium text-foreground ml-1">Total Guests</label>
-                                                            <div className="flex items-center gap-4 bg-muted/30 border border-border rounded-xl p-2 w-full sm:w-fit">
-                                                                <button onClick={() => setData('total_guest', Math.max(1, data.total_guest - 1))} className="p-2 hover:bg-background rounded-lg shadow-sm"><Minus size={14} /></button>
-                                                                <span className="w-8 text-center font-bold text-sm">{data.total_guest}</span>
-                                                                <button onClick={() => setData('total_guest', data.total_guest + 1)} className="p-2 hover:bg-background rounded-lg shadow-sm"><Plus size={14} /></button>
+                                                            <label className="text-xs font-medium text-foreground ml-1">Room Capacity</label>
+                                                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                                                                <div className="flex items-center justify-between mb-3">
+                                                                    <span className="text-sm text-muted-foreground">Base Capacity:</span>
+                                                                    <span className="text-2xl font-bold text-primary">{selectedRoom?.room_category?.room_capacity || 0}</span>
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground mt-3 p-2 bg-background rounded-lg border border-border/50">
+                                                                    <p className="font-medium mb-1">Extra persons via services:</p>
+                                                                    <p>Up to +{selectedRoom?.max_extra_person || 0} additional guests</p>
+                                                                </div>
+                                                                <div className="mt-3 pt-3 border-t border-border/50">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-sm font-semibold text-foreground">Maximum Allowed:</span>
+                                                                        <span className="text-2xl font-bold text-emerald-500">{(selectedRoom?.room_category?.room_capacity || 0) + (selectedRoom?.max_extra_person || 0)}</span>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         {isAdminOrStaff && (
@@ -569,6 +639,19 @@ export default function AddReservation({
 
                                                 {/* Extras */}
                                                 <div className="space-y-4">
+                                                    {/* Capacity Constraints Info */}
+                                                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl p-4">
+                                                        <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2 mb-2">
+                                                            <AlertCircle size={14} />
+                                                            Room Capacity Limits
+                                                        </p>
+                                                        <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 ml-6">
+                                                            <li>• Extra Person Services: Max <span className="font-bold">{selectedRoom?.max_extra_person || 0}</span> per booking</li>
+                                                            <li>• Check ReservationServices.php for extra bed limits</li>
+                                                            <li>• Total guests cannot exceed <span className="font-bold">{(selectedRoom?.room_category?.room_capacity || 0) + (selectedRoom?.max_extra_person || 0)}</span></li>
+                                                        </ul>
+                                                    </div>
+
                                                     <div className="flex flex-col gap-2">
                                                         <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><Plus size={14} /> Extras</h4>
                                                         {/* @ts-ignore */}

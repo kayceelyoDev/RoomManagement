@@ -48,8 +48,8 @@ export default function RoomPage({ categories }: Props) {
     });
 
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Manage Rooms', href: rooms.create.url() },
-        { title: 'Create', href: '#' },
+        { title: 'Manage Rooms', href: rooms.index.url() },
+        { title: 'Create', href: '/' },
     ];
 
     // --- Handlers ---

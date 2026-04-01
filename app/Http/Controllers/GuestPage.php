@@ -23,7 +23,7 @@ class GuestPage extends Controller
     {
         $rooms = Rooms::latest()
            
-            ->select('id', 'room_name', 'room_categories_id', 'img_url', 'max_extra_person', 'status')
+            ->select('id', 'room_name','room_description',  'room_categories_id', 'img_url', 'max_extra_person', 'status')
             ->with([
                 'roomCategory:id,room_category,price,room_capacity',
                 'reservations' => fn($q) => $q->where('check_out_date', '>=', now())
