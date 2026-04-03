@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     Search, X, ArrowRight, LogOut, ClipboardList, 
-    CheckCircle, Users, Sun, Moon, BedDouble
+    CheckCircle, Users, Sun, Moon, BedDouble, AlertCircle
 } from 'lucide-react';
 import { logout } from '@/routes'; 
 import AddReservation from '@/pages/reservations/modal/AddReservation'; 
@@ -30,6 +30,7 @@ interface Room {
     max_extra_person: number;
     status: string;
     room_description: string;
+    type_of_bed: string;
     // FIX: Match Laravel relationship name (snake_case in JSON)
     room_category?: RoomCategory; 
 }
@@ -206,10 +207,11 @@ export default function GuestPage({ rooms = [], services = [] }: GuestPageProps)
                             >
                                 <div className="aspect-[4/3] overflow-hidden relative">
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-10 opacity-60 group-hover:opacity-40 transition-opacity" />
-                                    <img 
-                                        src={getRoomImage(room.img_url)} 
-                                        alt={room.room_name} 
-                                        className="w-full h-full object-cover transform group-hover:scale-110 transition duration-700 ease-in-out" 
+                                    <img
+                                        src={getRoomImage(room.img_url)}
+                                        alt={room.room_name}
+                                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/img/room1.jpg'; }}
+                                        className="absolute inset-0 w-full h-full object-cover object-center transform group-hover:scale-110 transition duration-700 ease-in-out"
                                     />
                                     <div className="absolute top-4 left-4 z-20">
                                         <span className="px-3 py-1 bg-background/90 backdrop-blur-md text-foreground text-[10px] font-bold uppercase tracking-wider rounded-full border border-border">
@@ -263,7 +265,7 @@ export default function GuestPage({ rooms = [], services = [] }: GuestPageProps)
             {/* --- DETAILS MODAL --- */}
             {selectedRoom && !isReservationModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-background/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-card rounded-t-[2rem] sm:rounded-[2rem] w-full max-w-5xl h-[90vh] md:h-[85vh] overflow-hidden shadow-2xl shadow-black/10 relative flex flex-col md:flex-row border border-border animate-in slide-in-from-bottom-10 duration-300">
+                    <div className="bg-card rounded-t-[2rem] sm:rounded-[2rem] w-full max-w-6xl max-h-[95vh] overflow-hidden shadow-2xl shadow-black/10 relative flex flex-col md:flex-row border border-border animate-in slide-in-from-bottom-10 duration-300">
                         
                         <button 
                             onClick={() => setSelectedRoom(null)} 
@@ -272,66 +274,137 @@ export default function GuestPage({ rooms = [], services = [] }: GuestPageProps)
                             <X size={20} />
                         </button>
 
-                        <div className="w-full md:w-1/2 h-48 sm:h-64 md:h-full relative bg-muted flex-shrink-0">
-                            <img src={getRoomImage(selectedRoom.img_url)} className="w-full h-full object-cover" />
+                        {/* Room Image Section */}
+                        <div className="w-full md:w-2/5 h-48 sm:h-64 md:h-auto min-h-[220px] md:min-h-[360px] relative bg-muted flex-shrink-0 overflow-hidden">
+                            <img
+                                src={getRoomImage(selectedRoom.img_url)}
+                                alt={selectedRoom.room_name}
+                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/img/room1.jpg'; }}
+                                className="absolute inset-0 w-full h-full object-cover object-center"
+                            />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:bg-gradient-to-r" />
                             <div className="absolute bottom-4 left-4 sm:bottom-8 sm:left-8 text-white z-10">
                                 <span className="inline-block px-2 py-0.5 sm:px-3 sm:py-1 bg-secondary text-secondary-foreground text-[10px] sm:text-xs font-bold uppercase rounded-lg mb-2 sm:mb-3">
-                                    {/* FIX: Updated accessor */}
                                     {selectedRoom.room_category?.room_category}
                                 </span>
                                 <h2 className="text-2xl sm:text-4xl font-bold leading-tight drop-shadow-md">{selectedRoom.room_name}</h2>
                             </div>
                         </div>
 
-                        <div className="w-full md:w-1/2 p-6 md:p-12 overflow-y-auto bg-card flex flex-col flex-1">
-                            <div className="flex gap-4 mb-6 sm:mb-8">
-                                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-muted rounded-xl sm:rounded-2xl flex-1 border border-border">
-                                    <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Capacity</span>
-                                    <div className="flex items-center gap-2 text-foreground font-bold text-sm sm:text-base">
-                                        <Users size={16} className="text-primary" /> 
-                                        {/* FIX: Updated accessor */}
-                                        {selectedRoom.room_category?.room_capacity} Persons
+                        {/* Details Section */}
+                        <div className="w-full md:w-3/5 p-6 md:p-8 overflow-y-auto bg-card flex flex-col flex-1">
+                            {/* Status & Quick Info Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                                <div className="px-3 py-2 bg-muted rounded-xl border border-border">
+                                    <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Base Capacity</span>
+                                    <div className="flex items-center gap-2 text-foreground font-bold text-sm">
+                                        <Users size={14} className="text-primary" /> 
+                                        {selectedRoom.room_category?.room_capacity} pax
                                     </div>
                                 </div>
-                                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-muted rounded-xl sm:rounded-2xl flex-1 border border-border">
+                                <div className="px-3 py-2 bg-muted rounded-xl border border-border">
+                                    <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Max Extra</span>
+                                    <div className="flex items-center gap-2 text-foreground font-bold text-sm">
+                                        <Users size={14} className="text-blue-500" /> 
+                                        +{selectedRoom.max_extra_person || 0}
+                                    </div>
+                                </div>
+                                <div className="px-3 py-2 bg-muted rounded-xl border border-border">
+                                    <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Bed Type</span>
+                                    <p className="text-foreground font-bold text-sm truncate">{selectedRoom.type_of_bed || 'Standard'}</p>
+                                </div>
+                                <div className="px-3 py-2 bg-muted rounded-xl border border-border">
                                     <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Status</span>
-                                    <div className="flex items-center gap-2 text-foreground font-bold text-sm sm:text-base">
-                                        <CheckCircle size={16} className="text-secondary" /> 
-                                        {selectedRoom.status}
+                                    <div className="flex items-center gap-1">
+                                        <CheckCircle size={14} className={selectedRoom.status === 'available' ? 'text-emerald-500' : 'text-orange-500'} /> 
+                                        <span className="text-foreground font-bold text-sm capitalize">{selectedRoom.status}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-4 mb-8 sm:mb-10 flex-1">
-                                <h3 className="text-sm font-bold text-foreground uppercase tracking-widest border-l-2 border-secondary pl-3">
-                                    Room Description
+                            {/* Additional Info Grid - Extra Bed & Category */}
+                            <div className="grid grid-cols-2 gap-3 mb-6">
+                                <div className="px-3 py-2 bg-secondary/5 border border-secondary/20 rounded-xl">
+                                    <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Max Extra Beds</span>
+                                    <p className="text-foreground font-bold text-sm">{selectedRoom.room_category?.max_extra_bed || 0}</p>
+                                </div>
+                                <div className="px-3 py-2 bg-secondary/5 border border-secondary/20 rounded-xl">
+                                    <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">Category</span>
+                                    <p className="text-foreground font-bold text-sm">{selectedRoom.room_category?.room_category || 'N/A'}</p>
+                                </div>
+                            </div>
+
+                            {/* Price Section */}
+                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
+                                <span className="text-xs text-muted-foreground uppercase font-bold block mb-2">Nightly Rate</span>
+                                <div className="flex items-baseline gap-2">
+                                    <div className="text-3xl font-bold text-primary">
+                                        {selectedRoom.room_category && formatCurrency(selectedRoom.room_category.price)}
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">/ night</span>
+                                </div>
+                            </div>
+
+                            {/* Room Description */}
+                            <div className="space-y-3 mb-6">
+                                <h3 className="text-xs font-bold text-foreground uppercase tracking-widest border-l-2 border-secondary pl-3">
+                                    Description
                                 </h3>
-                                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                                     {selectedRoom.room_description || "No description available for this room."}
                                 </p>
                             </div>
 
-                            <div className="mt-auto pt-4 sm:pt-6 border-t border-border sticky bottom-0 bg-card pb-2 sm:pb-0">
-                                <div className="flex items-end justify-between mb-4 sm:mb-6">
-                                    <div>
-                                        <span className="text-xs text-muted-foreground uppercase font-bold block mb-1">Total Price</span>
-                                        <div className="text-3xl sm:text-4xl font-bold text-primary">
-                                            {/* FIX: Updated accessor */}
-                                            {selectedRoom.room_category && formatCurrency(selectedRoom.room_category.price)}
-                                        </div>
+                            {/* Amenities Section */}
+                            {selectedRoom.room_amenities && (
+                                <div className="space-y-3 mb-6">
+                                    <h3 className="text-xs font-bold text-foreground uppercase tracking-widest border-l-2 border-secondary pl-3">
+                                        Amenities
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {selectedRoom.room_amenities.split(',').map((amenity, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                                {amenity.trim()}
+                                            </div>
+                                        ))}
                                     </div>
-                                    <span className="text-sm text-muted-foreground font-medium">/ per night</span>
                                 </div>
-                                
-                                <button 
-                                    onClick={handleProceedToReservation}
-                                    className="w-full py-3 sm:py-4 bg-primary text-primary-foreground rounded-xl font-bold uppercase tracking-widest hover:bg-primary/90 transition shadow-lg shadow-primary/25 flex items-center justify-center gap-2 group text-sm sm:text-base"
-                                >
-                                    Book This Room 
-                                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                                </button>
+                            )}
+
+                            {/* Capacity & Accommodations Summary */}
+                            <div className="bg-muted/40 dark:bg-muted/30 border border-border rounded-xl p-4 mb-6 space-y-2">
+                                <p className="text-xs font-bold text-foreground flex items-center gap-2 mb-2">
+                                    <AlertCircle size={12} />
+                                    Room Details
+                                </p>
+                                <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                                    <div className="space-y-1">
+                                        <div className="font-medium">Accommodations:</div>
+                                        <ul className="ml-3 space-y-0.5">
+                                            <li>• Base capacity: {selectedRoom.room_category?.room_capacity || 0} guests</li>
+                                            <li>• Extra persons: +{selectedRoom.max_extra_person || 0}</li>
+                                            <li>• Total max: {(selectedRoom.room_category?.room_capacity || 0) + (selectedRoom.max_extra_person || 0)}</li>
+                                        </ul>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="font-medium">Bed Setup:</div>
+                                        <ul className="ml-3 space-y-0.5">
+                                            <li>• Type: {selectedRoom.type_of_bed || 'Standard'}</li>
+                                            <li>• Extra beds: {selectedRoom.room_category?.max_extra_bed || 0}</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Book Button */}
+                            <button 
+                                onClick={handleProceedToReservation}
+                                className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold uppercase tracking-widest hover:bg-primary/90 transition shadow-lg shadow-primary/25 flex items-center justify-center gap-2 group text-sm"
+                            >
+                                Book This Room 
+                                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                            </button>
                         </div>
                     </div>
                 </div>

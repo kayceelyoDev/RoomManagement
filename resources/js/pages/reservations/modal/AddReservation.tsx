@@ -3,7 +3,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import {
     X, Minus, Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle,
-    Loader2, AlertCircle, Info, Bed, Clock, Calendar, Users, Phone, User, CreditCard
+    Loader2, AlertCircle, Info, Bed, Clock, Calendar, Users, Phone, User, CreditCard, Sparkles
 } from 'lucide-react';
 import reservationRoute from '@/routes/reservation';
 import {
@@ -31,6 +31,7 @@ export interface Room {
         room_category: string;
         price: number;
         room_capacity: number;
+        max_extra_bed: number;
     };
     reservations?: {
         id: number;
@@ -50,7 +51,7 @@ interface ReservationFormState {
     room_id: string;
     guest_name: string;
     contact_number: string;
-    guest_email: string; // <-- Just keep this
+    guest_email: string;
     total_guest: number;
     check_in_date: string;
     check_out_date: string;
@@ -89,7 +90,7 @@ export default function AddReservation({
         room_id: preSelectedRoomId ? preSelectedRoomId.toString() : '',
         guest_name: '',
         contact_number: '',
-        guest_email: '', // <-- Add this
+        guest_email: '',
         total_guest: 1,
         check_in_date: '',
         check_out_date: '',
@@ -120,7 +121,25 @@ export default function AddReservation({
         });
     }, [selectedRoom]);
 
-    // --- REAL-TIME CONFLICT CHECK ---
+    const serviceCounts = useMemo(() => {
+        let extraPerson = 0;
+        let extraBed = 0;
+
+        data.selected_services.forEach(item => {
+            const svc = services.find(s => s.id === item.id);
+            if (!svc) return;
+            const nameLower = svc.services_name.toLowerCase();
+            if (nameLower.includes('extra person')) {
+                extraPerson += item.quantity;
+            } else if (nameLower.includes('extra bed')) {
+                extraBed += item.quantity;
+            }
+        });
+
+        return { extraPerson, extraBed };
+    }, [data.selected_services, services]);
+
+    // --- REAL-TIME CONFLICT & LIMIT CHECK ---
     useEffect(() => {
         if (!data.check_in_date || !data.check_out_date) {
             setLocalError(null);
@@ -135,18 +154,12 @@ export default function AddReservation({
             return;
         }
 
-        // Add buffer to NEW reservation to check strict overlap
         const newEndWithBuffer = addHours(newEnd, BUFFER_HOURS);
 
         const hasConflict = validReservations.some(res => {
             const resStart = parseISO(res.check_in_date);
             const resEnd = parseISO(res.check_out_date);
-            // Add buffer to EXISTING reservation
             const resEndWithBuffer = addHours(resEnd, BUFFER_HOURS);
-
-            // STRICT OVERLAP LOGIC: (StartA < EndB) && (EndA > StartB)
-            // 1. Is New Start BEFORE Existing End (+Buffer)?
-            // 2. Is New End (+Buffer) AFTER Existing Start?
             return newStart < resEndWithBuffer && newEndWithBuffer > resStart;
         });
 
@@ -159,7 +172,6 @@ export default function AddReservation({
     }, [data.check_in_date, data.check_out_date, validReservations]);
 
     // --- CAPTCHA MONITOR ---
-    // Guests always need captcha; admin/staff/supperAdmin never do
     useEffect(() => {
         if (isGuest) {
             setRequiresCaptcha(true);
@@ -226,7 +238,6 @@ export default function AddReservation({
         const overlapping = validReservations.filter(res => {
             const start = parseISO(res.check_in_date);
             const end = parseISO(res.check_out_date);
-            // Simple overlap check for the day grid
             return areIntervalsOverlapping({ start: startOfDay(date), end: addHours(startOfDay(date), 24) }, { start, end });
         });
 
@@ -321,8 +332,13 @@ export default function AddReservation({
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Prevent submission if local error exists
+
+        const maxP = selectedRoom?.max_extra_person ?? 0;
+        const maxB = selectedRoom?.room_category?.max_extra_bed ?? 0;
+
         if (localError) return;
+        if (serviceCounts.extraPerson > maxP || serviceCounts.extraBed > maxB) return;
+
         post(reservationRoute.store.url(), { onSuccess: () => onClose() });
     };
 
@@ -336,19 +352,21 @@ export default function AddReservation({
     const availableTimeSlot = selectedDate ? getEarliestAvailableTime(selectedDate) : null;
     const isFullyBooked = selectedDate && availableTimeSlot === null;
 
-    const gradientBg = "bg-gradient-to-br from-background to-muted/30";
-    const inputClass = "w-full px-4 py-3 bg-muted/30 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm";
+    const inputClass = "w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all text-sm text-foreground placeholder:text-muted-foreground/60";
 
-    // --- Responsive Step Indicator ---
-    const StepIndicator = ({ current, target, label }: { current: string, target: string, label: string }) => {
+    // --- Step Indicator ---
+    const StepIndicator = ({ current, target, label, icon }: { current: string; target: string; label: string; icon: React.ReactNode }) => {
         const isActive = current === target;
         const isCompleted = (target === 'room' && current !== 'room') || (target === 'calendar' && current === 'form');
         return (
-            <div className={`flex items-center gap-2 ${isActive ? 'text-primary' : isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>
-                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold border-2 transition-all ${isActive ? 'border-primary bg-primary/10' : isCompleted ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background'}`}>
-                    {isCompleted ? <CheckCircle size={12} className="sm:w-3.5 sm:h-3.5" /> : (target === 'room' ? 1 : target === 'calendar' ? 2 : 3)}
+            <div className={`flex items-center gap-2 transition-all ${isActive ? 'text-primary' : isCompleted ? 'text-foreground/70' : 'text-muted-foreground/50'}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${isActive ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/30'
+                    : isCompleted ? 'border-primary/60 bg-primary/10 text-primary'
+                        : 'border-border bg-card'
+                    }`}>
+                    {isCompleted ? <CheckCircle size={13} /> : (target === 'room' ? 1 : target === 'calendar' ? 2 : 3)}
                 </div>
-                <span className={`text-xs sm:text-sm font-medium ${isActive && 'font-bold'}`}>{label}</span>
+                <span className={`text-xs font-semibold tracking-wide hidden sm:block`}>{label}</span>
             </div>
         );
     };
@@ -356,228 +374,306 @@ export default function AddReservation({
     return (
         <Transition show={isOpen} as={Fragment}>
             <Dialog as="div" className="relative z-50" onClose={onClose}>
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" />
+                {/* Backdrop */}
+                <Transition.Child
+                    as={Fragment}
+                    enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100"
+                    leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0"
+                >
+                    <div className="fixed inset-0 bg-black/70 backdrop-blur-md" />
+                </Transition.Child>
+
                 <div className="fixed inset-0 overflow-y-auto">
-                    <div className="flex min-h-full items-center justify-center p-0 md:p-4">
-                        <Dialog.Panel className={`w-full md:max-w-6xl h-full md:h-[800px] md:rounded-3xl bg-card shadow-2xl flex flex-col lg:flex-row overflow-hidden ${gradientBg}`}>
+                    <div className="flex min-h-full items-center justify-center p-0 sm:p-4 md:p-6">
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-300" enterFrom="opacity-0 scale-95 translate-y-4" enterTo="opacity-100 scale-100 translate-y-0"
+                            leave="ease-in duration-200" leaveFrom="opacity-100 scale-100 translate-y-0" leaveTo="opacity-0 scale-95 translate-y-4"
+                        >
+                            <Dialog.Panel className="w-full md:max-w-6xl h-full sm:h-auto md:h-[88vh] md:max-h-[860px] sm:rounded-2xl md:rounded-2xl bg-background shadow-2xl flex flex-col lg:flex-row overflow-hidden border border-border/60">
 
-                            {/* --- Left Panel (Main Content) --- */}
-                            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-                                <div className="px-4 py-4 md:px-8 md:pt-8 md:pb-4 flex justify-between items-start z-10 bg-card/80 backdrop-blur-md sticky top-0 border-b border-border/50">
-                                    <div className="space-y-2 md:space-y-4">
-                                        <Dialog.Title className="text-xl md:text-3xl font-serif font-bold text-foreground tracking-tight">
-                                            {step === 'room' && 'Select Room'}
-                                            {step === 'calendar' && 'Select Dates'}
-                                            {step === 'form' && 'Guest Details'}
-                                        </Dialog.Title>
-                                        <div className="flex gap-3 md:gap-6">
-                                            <StepIndicator current={step} target="room" label="Room" />
-                                            <div className="h-px w-4 md:w-8 bg-border self-center" />
-                                            <StepIndicator current={step} target="calendar" label="Date" />
-                                            <div className="h-px w-4 md:w-8 bg-border self-center" />
-                                            <StepIndicator current={step} target="form" label="Confirm" />
+                                {/* ═══════════════════════════════════════════
+                                    LEFT PANEL — Main Content
+                                ═══════════════════════════════════════════ */}
+                                <div className="flex-1 flex flex-col h-full overflow-hidden">
+
+                                    {/* Header */}
+                                    <div className="px-5 py-4 md:px-8 md:py-5 flex justify-between items-center bg-card border-b border-border/60 shrink-0 gap-4">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                    <Bed size={16} className="text-primary" />
+                                                </div>
+                                                <Dialog.Title className="text-lg md:text-xl font-bold text-foreground tracking-tight">
+                                                    {step === 'room' && 'Select a Room'}
+                                                    {step === 'calendar' && 'Pick Your Dates'}
+                                                    {step === 'form' && 'Guest & Stay Details'}
+                                                </Dialog.Title>
+                                            </div>
+                                            {/* Step Indicators */}
+                                            <div className="flex items-center gap-2">
+                                                <StepIndicator current={step} target="room" label="Room" icon={<Bed size={12} />} />
+                                                <div className="h-px w-5 bg-border" />
+                                                <StepIndicator current={step} target="calendar" label="Dates" icon={<Calendar size={12} />} />
+                                                <div className="h-px w-5 bg-border" />
+                                                <StepIndicator current={step} target="form" label="Details" icon={<User size={12} />} />
+                                            </div>
                                         </div>
+                                        <button
+                                            onClick={onClose}
+                                            className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
+                                        >
+                                            <X size={18} />
+                                        </button>
                                     </div>
-                                    <button onClick={onClose} className="p-2 bg-muted/50 hover:bg-destructive/10 hover:text-destructive rounded-full transition-all">
-                                        <X size={20} />
-                                    </button>
-                                </div>
 
-                                <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin scrollbar-thumb-primary/10">
-                                    {Object.keys(errors).length > 0 && (
-                                        <div className="mb-6 p-3 bg-destructive/5 border border-destructive/20 rounded-xl flex gap-3 animate-in fade-in slide-in-from-top-2">
-                                            <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                                            <div className="space-y-1">
-                                                <h4 className="text-sm font-semibold text-destructive">Error</h4>
-                                                <p className="text-xs text-destructive/80">Please check the fields below.</p>
+                                    {/* Scrollable Body */}
+                                    <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+
+                                        {/* Server Error Banner */}
+                                        {Object.keys(errors).length > 0 && (
+                                            <div className="mb-5 p-3 bg-destructive/5 border border-destructive/20 rounded-xl flex gap-3 animate-in fade-in slide-in-from-top-2">
+                                                <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="text-xs font-semibold text-destructive">Please fix the errors below before submitting.</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {/* --- STEP 1: ROOMS --- */}
-                                    {step === 'room' && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500 pb-20 lg:pb-0">
-                                            {rooms.map(room => (
-                                                <div
-                                                    key={room.id}
-                                                    onClick={() => { setData('room_id', room.id.toString()); setStep('calendar'); }}
-                                                    className="group relative bg-card border border-border/60 hover:border-primary/50 rounded-2xl p-5 cursor-pointer transition-all hover:shadow-lg active:scale-95 md:active:scale-100 flex flex-col"
+                                        {/* ─── STEP 1: ROOMS ─── */}
+                                        {step === 'room' && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-3 duration-400 pb-24 lg:pb-4">
+                                                {rooms.map(room => (
+                                                    <button
+                                                        key={room.id}
+                                                        type="button"
+                                                        onClick={() => { setData('room_id', room.id.toString()); setStep('calendar'); }}
+                                                        className="group text-left bg-card border border-border/70 hover:border-primary/50 hover:shadow-lg rounded-2xl p-5 cursor-pointer transition-all duration-200 flex flex-col focus:outline-none focus:ring-2 focus:ring-primary/30 active:scale-[0.98]"
+                                                    >
+                                                        <div className="flex justify-between items-start mb-4">
+                                                            <div className="w-10 h-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center text-primary transition-colors">
+                                                                <Bed size={18} />
+                                                            </div>
+                                                            <span className="px-2.5 py-1 bg-secondary/40 text-secondary-foreground rounded-full text-[10px] font-bold uppercase tracking-wider">
+                                                                {room.room_category?.room_category}
+                                                            </span>
+                                                        </div>
+                                                        <h3 className="text-base font-bold text-foreground mb-1.5">{room.room_name}</h3>
+                                                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
+                                                            <Users size={12} />
+                                                            <span>Up to {room.max_extra_person} extra guests</span>
+                                                        </div>
+                                                        <div className="pt-3 border-t border-border/50 flex items-center justify-between mt-auto">
+                                                            <div>
+                                                                <p className="text-[10px] text-muted-foreground font-medium">From</p>
+                                                                <p className="text-lg font-bold text-foreground">₱{room.room_category?.price.toLocaleString()}<span className="text-xs font-normal text-muted-foreground">/night</span></p>
+                                                            </div>
+                                                            <div className="w-7 h-7 rounded-full bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center text-primary transition-all">
+                                                                <ChevronRight size={14} />
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* ─── STEP 2: CALENDAR ─── */}
+                                        {step === 'calendar' && (
+                                            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-400 pb-24 lg:pb-4">
+                                                {/* Change Room back link */}
+                                                <button
+                                                    onClick={() => setStep('room')}
+                                                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors self-start -ml-1 px-2 py-1 rounded-lg hover:bg-muted"
                                                 >
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <div className="p-2.5 bg-primary/5 group-hover:bg-primary/10 rounded-xl text-primary"><Bed size={20} /></div>
-                                                        <span className="px-2.5 py-1 bg-muted rounded-full text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{room.room_category?.room_category}</span>
+                                                    <ChevronLeft size={15} />
+                                                    <span className="font-medium">Change Room</span>
+                                                </button>
+                                                {/* Selected Room Banner */}
+                                                <div className="bg-card border border-border/70 rounded-2xl p-4 flex flex-wrap items-center gap-3">
+                                                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
+                                                        <Bed size={18} />
                                                     </div>
-                                                    <h3 className="text-lg font-bold text-foreground mb-1">{room.room_name}</h3>
-                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-                                                        <Users size={14} /> <span>Max {room.max_extra_person} Guests</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Selected Room</p>
+                                                        <p className="text-sm font-bold text-foreground truncate">{selectedRoom?.room_name}</p>
                                                     </div>
-                                                    <div className="pt-3 border-t border-border/50 flex items-end justify-between mt-auto">
+                                                    <div className="flex gap-5 text-center shrink-0">
                                                         <div>
-                                                            <p className="text-[10px] text-muted-foreground uppercase font-bold">From</p>
-                                                            <p className="text-lg font-bold text-foreground">₱{room.room_category?.price.toLocaleString()}</p>
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Capacity</p>
+                                                            <p className="text-sm font-bold text-primary">{selectedRoom?.room_category?.room_capacity ?? 0} pax</p>
                                                         </div>
-                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary"><ChevronRight size={16} /></div>
+                                                        <div className="hidden sm:block">
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Extra Person</p>
+                                                            <p className="text-sm font-bold text-primary">{selectedRoom?.max_extra_person ?? 0}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Price/Night</p>
+                                                            <p className="text-sm font-bold text-primary">₱{selectedRoom?.room_category?.price?.toLocaleString() ?? 0}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* --- STEP 2: CALENDAR --- */}
-                                    {step === 'calendar' && (
-                                        <div className="flex flex-col h-full animate-in slide-in-from-right-8 duration-500 pb-4">
-                                            {/* Room Details Summary */}
-                                            <div className={`${gradientBg} border border-border rounded-2xl p-4 mb-6 shadow-sm`}>
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <div className="w-10 h-10 bg-primary/10 rounded-lg items-center justify-center text-primary flex">
-                                                        <Bed size={20} />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Room Selected</p>
-                                                        <p className="text-sm font-semibold text-foreground">{selectedRoom?.room_name}</p>
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => setStep('room')} 
-                                                        className="text-xs font-bold text-primary hover:bg-background px-2 py-1 rounded-lg transition-colors"
+                                                    <button
+                                                        onClick={() => setStep('room')}
+                                                        className="text-xs font-semibold text-primary hover:underline shrink-0 px-2 py-1 rounded-lg hover:bg-primary/5 transition-colors"
                                                     >
                                                         Change
                                                     </button>
                                                 </div>
-                                                <div className="flex gap-4 pt-3 border-t border-border/50">
-                                                    <div className="flex-1">
-                                                        <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Base Capacity</p>
-                                                        <p className="text-lg font-bold text-primary">{selectedRoom?.room_category?.room_capacity || 0} pax</p>
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Max Extra</p>
-                                                        <p className="text-lg font-bold text-blue-500">{selectedRoom?.max_extra_person || 0}</p>
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Price/Night</p>
-                                                        <p className="text-lg font-bold text-emerald-500">₱{selectedRoom?.room_category?.price?.toLocaleString() || 0}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
 
-                                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                                                <div className="flex items-center justify-between w-full sm:w-auto gap-4 bg-card border border-border rounded-xl p-1.5 pl-4 shadow-sm">
-                                                    <span className="font-serif text-base font-bold text-foreground flex-1 text-center sm:min-w-[140px]">
-                                                        {format(currentMonth, 'MMMM yyyy')}
-                                                    </span>
+                                                {/* Month Navigator */}
+                                                <div className="flex items-center justify-between bg-card border border-border/60 rounded-xl px-4 py-2.5">
+                                                    <span className="text-sm font-bold text-foreground">{format(currentMonth, 'MMMM yyyy')}</span>
                                                     <div className="flex gap-1">
-                                                        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-muted rounded-lg text-foreground"><ChevronLeft size={16} /></button>
-                                                        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-muted rounded-lg text-foreground"><ChevronRight size={16} /></button>
+                                                        <button
+                                                            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                                                            className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                                                        >
+                                                            <ChevronLeft size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                                                            className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                                                        >
+                                                            <ChevronRight size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Calendar Grid */}
+                                                <div className="bg-card rounded-2xl border border-border/70 p-4 md:p-5">
+                                                    <div className="grid grid-cols-7 mb-2">
+                                                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                                                            <div key={d} className="text-center text-[10px] font-bold text-muted-foreground uppercase py-1.5">{d}</div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="grid grid-cols-7 gap-1 md:gap-1.5">
+                                                        {Array.from({ length: startingDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
+                                                        {daysInMonth.map((day) => {
+                                                            const isPast = isBefore(day, startOfToday());
+                                                            const hasRes = getReservationsForDate(day).length > 0;
+                                                            const isSelected = selectedDate && isSameDay(day, selectedDate);
+                                                            return (
+                                                                <button
+                                                                    key={day.toString()}
+                                                                    type="button"
+                                                                    disabled={isPast}
+                                                                    onClick={() => { setSelectedDate(day); clearErrors(); }}
+                                                                    className={`
+                                                                        relative rounded-xl flex flex-col items-center justify-center transition-all duration-200 border
+                                                                        h-11 sm:h-14 md:h-16 text-xs font-semibold
+                                                                        ${isPast ? 'opacity-20 cursor-not-allowed border-transparent bg-transparent text-muted-foreground' : 'cursor-pointer active:scale-95'}
+                                                                        ${isSelected
+                                                                            ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25 scale-105 z-10'
+                                                                            : !isPast ? 'bg-card border-border/60 text-foreground hover:border-primary/40 hover:bg-primary/5'
+                                                                                : ''
+                                                                        }
+                                                                    `}
+                                                                >
+                                                                    {format(day, 'd')}
+                                                                    {hasRes && !isSelected && (
+                                                                        <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-orange-400" />
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             </div>
+                                        )}
 
-                                            <div className="bg-card rounded-2xl border border-border p-4 md:p-6 shadow-sm flex-1 flex flex-col">
-                                                <div className="grid grid-cols-7 mb-2">
-                                                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                                                        <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-muted-foreground/50 uppercase py-2">{d}</div>
-                                                    ))}
-                                                </div>
-                                                <div className="grid grid-cols-7 gap-1 md:gap-3 flex-1">
-                                                    {Array.from({ length: startingDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
-                                                    {daysInMonth.map((day) => {
-                                                        const isPast = isBefore(day, startOfToday());
-                                                        const hasRes = getReservationsForDate(day).length > 0;
-                                                        const isSelected = selectedDate && isSameDay(day, selectedDate);
-                                                        return (
-                                                            <button
-                                                                key={day.toString()}
-                                                                disabled={isPast}
-                                                                onClick={() => { setSelectedDate(day); clearErrors(); }}
-                                                                className={`
-                                                                    relative rounded-lg md:rounded-xl flex flex-col items-center justify-center transition-all duration-200 border
-                                                                    h-10 sm:h-16 md:h-auto md:min-h-[4rem]
-                                                                    ${isPast ? 'opacity-30 cursor-not-allowed border-transparent' : 'hover:border-primary/50'}
-                                                                    ${isSelected ? 'bg-primary text-primary-foreground border-primary shadow-lg scale-105 z-10' : 'bg-background border-border text-foreground'}
-                                                                `}
-                                                            >
-                                                                <span className={`text-xs sm:text-sm font-bold`}>{format(day, 'd')}</span>
-                                                                {hasRes && !isSelected && (
-                                                                    <div className="mt-0.5 sm:mt-1 w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-orange-400" />
-                                                                )}
-                                                            </button>
-                                                        )
-                                                    })}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                        {/* ─── STEP 3: FORM ─── */}
+                                        {step === 'form' && (
+                                            <div className="animate-in fade-in slide-in-from-right-4 duration-400 max-w-3xl mx-auto w-full pb-28 lg:pb-4 space-y-6">
 
-                                    {/* --- STEP 3: FORM --- */}
-                                    {step === 'form' && (
-                                        <div className="animate-in slide-in-from-right-8 duration-500 max-w-3xl mx-auto w-full pb-20 lg:pb-0">
-                                            {/* Room Details Card */}
-                                            <div className={`${gradientBg} border border-border rounded-2xl p-4 md:p-6 mb-6 shadow-sm`}>
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div className="flex items-center gap-4 flex-1">
-                                                        <div className="w-14 h-14 bg-primary/10 rounded-xl items-center justify-center text-primary flex">
-                                                            <Bed size={28} />
+                                                {/* Selected Room Card */}
+                                                <div className="bg-card border border-border/70 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center gap-4">
+                                                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
+                                                        <Bed size={22} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Selected Room</p>
+                                                        <h3 className="text-base font-bold text-foreground truncate">{selectedRoom?.room_name}</h3>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">{selectedRoom?.room_category?.room_category}</p>
+                                                    </div>
+                                                    <div className="hidden sm:flex gap-5 text-center shrink-0">
+                                                        <div>
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Capacity</p>
+                                                            <p className="text-base font-bold text-primary">{selectedRoom?.room_category?.room_capacity || 0}</p>
                                                         </div>
                                                         <div>
-                                                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Selected Room</p>
-                                                            <h3 className="text-xl md:text-2xl font-serif font-bold text-foreground">{selectedRoom?.room_name}</h3>
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Max Person</p>
+                                                            <p className="text-base font-bold text-primary">{selectedRoom?.max_extra_person || 0}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Max Bed</p>
+                                                            <p className="text-base font-bold text-primary">{selectedRoom?.room_category?.max_extra_bed || 0}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Price/Night</p>
+                                                            <p className="text-base font-bold text-primary">₱{selectedRoom?.room_category?.price?.toLocaleString() || 0}</p>
                                                         </div>
                                                     </div>
-                                                    <button 
-                                                        onClick={() => setStep('room')} 
-                                                        className="text-xs font-bold text-primary border-b border-primary/20 pb-0.5 hover:border-primary transition-colors"
+                                                    {/* Mobile compact stats */}
+                                                    <div className="sm:hidden flex gap-4 text-center w-full border-t border-border/40 pt-3">
+                                                        <div className="flex-1">
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Capacity</p>
+                                                            <p className="text-sm font-bold text-primary">{selectedRoom?.room_category?.room_capacity || 0}</p>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Max Person</p>
+                                                            <p className="text-sm font-bold text-foreground">{selectedRoom?.max_extra_person || 0}</p>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[10px] text-muted-foreground font-medium">Price/Night</p>
+                                                            <p className="text-sm font-bold text-primary">₱{selectedRoom?.room_category?.price?.toLocaleString() || 0}</p>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setStep('room')}
+                                                        className="text-xs font-semibold text-primary hover:underline shrink-0 px-2 py-1 rounded-lg hover:bg-primary/5 transition-colors"
                                                     >
                                                         Change
                                                     </button>
                                                 </div>
 
-                                                {/* Room Capacity Info */}
-                                                <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border/50">
-                                                    <div className="text-center">
-                                                        <p className="text-xs text-muted-foreground font-semibold mb-1">Base Capacity</p>
-                                                        <p className="text-2xl font-bold text-primary">{selectedRoom?.room_category?.room_capacity || 0}</p>
-                                                        <p className="text-[10px] text-muted-foreground mt-1">Persons</p>
-                                                    </div>
-                                                    <div className="text-center border-l border-r border-border/50">
-                                                        <p className="text-xs text-muted-foreground font-semibold mb-1">Max Extra</p>
-                                                        <p className="text-2xl font-bold text-blue-500">{selectedRoom?.max_extra_person || 0}</p>
-                                                        <p className="text-[10px] text-muted-foreground mt-1">Persons</p>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-xs text-muted-foreground font-semibold mb-1">Price/Night</p>
-                                                        <p className="text-2xl font-bold text-emerald-500">₱{selectedRoom?.room_category?.price?.toLocaleString() || 0}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid gap-6 md:gap-8">
-                                                {/* Guest Info */}
-
+                                                {/* Guest Information */}
                                                 <div className="space-y-4">
-                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                                                        <User size={14} /> Guest Information
+                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground border-b border-border/50 pb-3">
+                                                        <User size={13} /> Guest Information
                                                     </h4>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div className="space-y-1.5">
-                                                            <label className="text-xs font-medium text-foreground ml-1">Full Name</label>
-                                                            <input className={`${inputClass} ${errors.guest_name && 'border-destructive'}`} placeholder="John Doe" value={data.guest_name} onChange={e => setData('guest_name', e.target.value)} required />
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-semibold text-foreground/80">Full Name</label>
+                                                            <input
+                                                                className={`${inputClass} ${errors.guest_name && 'border-destructive bg-destructive/5'}`}
+                                                                placeholder="e.g. Juan Dela Cruz"
+                                                                value={data.guest_name}
+                                                                onChange={e => setData('guest_name', e.target.value)}
+                                                            />
+                                                            {errors.guest_name && <p className="text-[10px] text-destructive font-medium mt-1">{errors.guest_name}</p>}
                                                         </div>
-                                                        <div className="space-y-1.5">
-                                                            <label className="text-xs font-medium text-foreground ml-1">Phone Number</label>
-                                                            <input className={`${inputClass} ${errors.contact_number && 'border-destructive'}`} placeholder="0912 345 6789" maxLength={11} value={data.contact_number} onChange={e => setData('contact_number', e.target.value.replace(/\D/g, ''))} required />
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-semibold text-foreground/80">Phone Number</label>
+                                                            <input
+                                                                className={`${inputClass} ${errors.contact_number && 'border-destructive bg-destructive/5'}`}
+                                                                placeholder="09XX XXX XXXX"
+                                                                maxLength={11}
+                                                                value={data.contact_number}
+                                                                onChange={e => setData('contact_number', e.target.value.replace(/\D/g, ''))}
+                                                            />
+                                                            {errors.contact_number && <p className="text-[10px] text-destructive font-medium mt-1">{errors.contact_number}</p>}
                                                         </div>
-
-                                                        {/* ONLY staff sees this, so only staff fills it out */}
                                                         {isAdminOrStaff && (
-                                                            <div className="space-y-1.5 md:col-span-2 animate-in fade-in slide-in-from-top-2">
-                                                                <label className="text-xs font-medium text-foreground ml-1">Guest Email (For Booking Confirmation)</label>
+                                                            <div className="space-y-2 md:col-span-2 animate-in fade-in slide-in-from-top-2">
+                                                                <label className="text-xs font-semibold text-foreground/80">Guest Email <span className="text-muted-foreground font-normal">(for booking confirmation)</span></label>
                                                                 <input
                                                                     type="email"
-                                                                    className={`${inputClass} ${errors.guest_email && 'border-destructive'}`}
+                                                                    className={`${inputClass} ${errors.guest_email && 'border-destructive bg-destructive/5'}`}
                                                                     placeholder="guest@example.com"
                                                                     value={data.guest_email}
                                                                     onChange={e => setData('guest_email', e.target.value)}
-                                                                    required={isAdminOrStaff} // Forces staff to enter an email
+                                                                    required={isAdminOrStaff}
                                                                 />
+                                                                {errors.guest_email && <p className="text-[10px] text-destructive font-medium mt-1">{errors.guest_email}</p>}
                                                             </div>
                                                         )}
                                                     </div>
@@ -585,49 +681,57 @@ export default function AddReservation({
 
                                                 {/* Stay Details */}
                                                 <div className="space-y-4">
-                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><Calendar size={14} /> Stay Details</h4>
+                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground border-b border-border/50 pb-3">
+                                                        <Calendar size={13} /> Stay Details
+                                                    </h4>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="space-y-1.5">
-                                                            <label className="text-xs font-medium text-foreground ml-1">Check-in</label>
-                                                            {/* Update input class based on localError */}
-                                                            <input type="datetime-local" className={`${inputClass} ${(errors.check_in_date || localError) && 'border-destructive bg-destructive/5'}`} value={data.check_in_date} onChange={e => setData('check_in_date', e.target.value)} />
-                                                            {/* Show Local Error or Server Error */}
-                                                            {(errors.check_in_date || localError) && (
-                                                                <p className="text-[10px] font-bold text-destructive flex items-center gap-1">
+                                                            <label className="text-xs font-semibold text-foreground/80">Check-in</label>
+                                                            <input
+                                                                type="datetime-local"
+                                                                className={`${inputClass} ${(errors.check_in_date || localError) && 'border-destructive bg-destructive/5'}`}
+                                                                value={data.check_in_date}
+                                                                onChange={e => setData('check_in_date', e.target.value)}
+                                                            />
+                                                            {(localError || errors.check_in_date) && (
+                                                                <p className="text-[10px] font-semibold text-destructive flex items-center gap-1">
                                                                     <XCircle size={10} /> {localError || errors.check_in_date}
                                                                 </p>
                                                             )}
                                                         </div>
                                                         <div className="space-y-1.5">
-                                                            <label className="text-xs font-medium text-foreground ml-1">Check-out</label>
-                                                            <input type="datetime-local" className={`${inputClass} ${errors.check_out_date && 'border-destructive'}`} value={data.check_out_date} onChange={e => setData('check_out_date', e.target.value)} />
+                                                            <label className="text-xs font-semibold text-foreground/80">Check-out</label>
+                                                            <input
+                                                                type="datetime-local"
+                                                                className={`${inputClass} ${errors.check_out_date && 'border-destructive bg-destructive/5'}`}
+                                                                value={data.check_out_date}
+                                                                onChange={e => setData('check_out_date', e.target.value)}
+                                                            />
+                                                            {errors.check_out_date && <p className="text-[10px] text-destructive font-medium">{errors.check_out_date}</p>}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        {/* Capacity Info */}
+                                                        <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4">
+                                                            <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-3">Room Capacity</p>
+
+
+                                                            <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                                                                <span className="text-xs font-semibold text-foreground">Maximum Allowed</span>
+                                                                <span className="text-xl font-bold text-primary">{(selectedRoom?.room_category?.room_capacity || 0) + (selectedRoom?.max_extra_person || 0)}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {/* Capacity Display */}
-                                                        <div className="space-y-1.5">
-                                                            <label className="text-xs font-medium text-foreground ml-1">Room Capacity</label>
-                                                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-                                                                <div className="flex items-center justify-between mb-3">
-                                                                    <span className="text-sm text-muted-foreground">Base Capacity:</span>
-                                                                    <span className="text-2xl font-bold text-primary">{selectedRoom?.room_category?.room_capacity || 0}</span>
-                                                                </div>
-                                                                <div className="text-xs text-muted-foreground mt-3 p-2 bg-background rounded-lg border border-border/50">
-                                                                    <p className="font-medium mb-1">Extra persons via services:</p>
-                                                                    <p>Up to +{selectedRoom?.max_extra_person || 0} additional guests</p>
-                                                                </div>
-                                                                <div className="mt-3 pt-3 border-t border-border/50">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-sm font-semibold text-foreground">Maximum Allowed:</span>
-                                                                        <span className="text-2xl font-bold text-emerald-500">{(selectedRoom?.room_category?.room_capacity || 0) + (selectedRoom?.max_extra_person || 0)}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
                                                         {isAdminOrStaff && (
-                                                            <div className="space-y-1.5">
-                                                                <label className="text-xs font-medium text-foreground ml-1">Status</label>
-                                                                <select className={inputClass} value={data.status} onChange={e => setData('status', e.target.value)}>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-semibold text-foreground/80">Reservation Status</label>
+                                                                <select
+                                                                    className={inputClass}
+                                                                    value={data.status}
+                                                                    onChange={e => setData('status', e.target.value)}
+                                                                >
                                                                     <option value="pending">Pending</option>
                                                                     <option value="confirmed">Confirmed</option>
                                                                     <option value="cancelled">Cancelled</option>
@@ -637,180 +741,301 @@ export default function AddReservation({
                                                     </div>
                                                 </div>
 
-                                                {/* Extras */}
+                                                {/* Add-on Services */}
                                                 <div className="space-y-4">
-                                                    {/* Capacity Constraints Info */}
-                                                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl p-4">
-                                                        <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2 mb-2">
-                                                            <AlertCircle size={14} />
-                                                            Room Capacity Limits
+                                                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground border-b border-border/50 pb-3">
+                                                        <Sparkles size={13} /> Add-on Services
+                                                    </h4>
+
+                                                    {/* Capacity Info Banner */}
+                                                    <div className="bg-muted/60 border border-border/50 rounded-2xl p-4">
+                                                        <p className="text-[10px] font-bold text-foreground/80 flex items-center gap-1.5 mb-2.5">
+                                                            <Info size={11} className="text-primary" /> Capacity Limits
                                                         </p>
-                                                        <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 ml-6">
-                                                            <li>• Extra Person Services: Max <span className="font-bold">{selectedRoom?.max_extra_person || 0}</span> per booking</li>
-                                                            <li>• Check ReservationServices.php for extra bed limits</li>
-                                                            <li>• Total guests cannot exceed <span className="font-bold">{(selectedRoom?.room_category?.room_capacity || 0) + (selectedRoom?.max_extra_person || 0)}</span></li>
+                                                        <ul className="text-[10px] text-muted-foreground space-y-1.5">
+                                                            <li className="flex items-center justify-between">
+                                                                <span className="text-muted">Extra Person</span>
+                                                                <span className="font-semibold text-foreground">{serviceCounts.extraPerson} <span className="text-muted-foreground font-normal">/ {selectedRoom?.max_extra_person || 0} max</span>
+                                                                    {serviceCounts.extraPerson > (selectedRoom?.max_extra_person || 0) && <span className="ml-1 text-destructive font-bold">✕</span>}
+                                                                </span>
+                                                            </li>
+                                                            <li className="flex items-center justify-between">
+                                                                <span>Extra Bed</span>
+                                                                <span className="font-semibold text-foreground">{serviceCounts.extraBed} <span className="text-muted-foreground font-normal">/ {selectedRoom?.room_category?.max_extra_bed || 0} max</span>
+                                                                    {serviceCounts.extraBed > (selectedRoom?.room_category?.max_extra_bed || 0) && <span className="ml-1 text-destructive font-bold">✕</span>}
+                                                                </span>
+                                                            </li>
                                                         </ul>
                                                     </div>
 
-                                                    <div className="flex flex-col gap-2">
-                                                        <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground"><Plus size={14} /> Extras</h4>
-                                                        {/* @ts-ignore */}
-                                                        {errors?.selected_services && (
-                                                            <div className="flex items-center gap-1.5 text-destructive text-xs font-bold bg-destructive/10 px-3 py-2 rounded-lg border border-destructive/20 animate-in fade-in zoom-in-95">
-                                                                <AlertCircle size={14} />
-                                                                {/* @ts-ignore */}
-                                                                {errors.selected_services}
+                                                    {/* Limit Exceeded Warning */}
+                                                    {(serviceCounts.extraPerson > (selectedRoom?.max_extra_person || 0) || serviceCounts.extraBed > (selectedRoom?.room_category?.max_extra_bed || 0)) && (
+                                                        <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-3 flex items-start gap-2.5 animate-in zoom-in-95 duration-200">
+                                                            <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                                                            <div>
+                                                                <p className="text-xs font-bold text-destructive mb-0.5">Capacity Limit Exceeded</p>
+                                                                <p className="text-[10px] text-destructive/80">
+                                                                    {serviceCounts.extraPerson > (selectedRoom?.max_extra_person || 0) && `Extra persons: ${serviceCounts.extraPerson} selected, max is ${selectedRoom?.max_extra_person || 0}. `}
+                                                                    {serviceCounts.extraBed > (selectedRoom?.room_category?.max_extra_bed || 0) && `Extra beds: ${serviceCounts.extraBed} selected, max is ${selectedRoom?.room_category?.max_extra_bed || 0}.`}
+                                                                </p>
                                                             </div>
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* @ts-ignore */}
+                                                    {errors?.selected_services && (
+                                                        <div className="flex items-center gap-1.5 text-destructive text-xs font-bold bg-destructive/5 px-3 py-2 rounded-lg border border-destructive/20">
+                                                            <AlertCircle size={13} />
+                                                            {/* @ts-ignore */}
+                                                            {errors.selected_services}
+                                                        </div>
+                                                    )}
+
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                         {services.map(svc => {
                                                             const selected = data.selected_services.find(s => s.id === svc.id);
                                                             const qty = selected?.quantity || 0;
                                                             return (
-                                                                <div key={svc.id} className={`p-3 border rounded-xl flex justify-between items-center ${qty > 0 ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}>
+                                                                <div
+                                                                    key={svc.id}
+                                                                    className={`p-4 border rounded-2xl flex justify-between items-center transition-all duration-200 ${qty > 0 ? 'border-primary/40 bg-primary/5 shadow-sm' : 'border-border/60 bg-card'}`}
+                                                                >
                                                                     <div>
-                                                                        <p className="font-medium text-sm text-foreground">{svc.services_name}</p>
-                                                                        <p className="text-[10px] text-muted-foreground font-mono">₱{svc.services_price}</p>
+                                                                        <p className="font-semibold text-sm text-foreground">{svc.services_name}</p>
+                                                                        <p className="text-xs text-muted-foreground mt-0.5">₱{svc.services_price.toLocaleString()} / unit</p>
                                                                     </div>
-                                                                    <div className="flex items-center gap-2 bg-background rounded-lg border border-border p-1">
-                                                                        <button type="button" onClick={() => updateServiceQuantity(svc.id, -1)} disabled={qty === 0} className="w-6 h-6 flex items-center justify-center hover:bg-muted rounded text-foreground disabled:opacity-30"><Minus size={10} /></button>
-                                                                        <span className="w-4 text-center text-xs font-bold">{qty}</span>
-                                                                        <button type="button" onClick={() => updateServiceQuantity(svc.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-muted rounded text-primary"><Plus size={10} /></button>
+                                                                    <div className="flex items-center gap-2 bg-background rounded-xl border border-border/60 p-1.5">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => updateServiceQuantity(svc.id, -1)}
+                                                                            disabled={qty === 0}
+                                                                            className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors active:scale-90"
+                                                                        >
+                                                                            <Minus size={11} />
+                                                                        </button>
+                                                                        <span className="w-6 text-center text-sm font-bold text-foreground">{qty}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => updateServiceQuantity(svc.id, 1)}
+                                                                            className="w-7 h-7 flex items-center justify-center hover:bg-primary/10 rounded-lg text-primary transition-colors active:scale-90"
+                                                                        >
+                                                                            <Plus size={11} />
+                                                                        </button>
                                                                     </div>
                                                                 </div>
-                                                            )
+                                                            );
                                                         })}
                                                     </div>
                                                 </div>
 
-                                                {/* Conditionally Render Google reCAPTCHA v2 */}
+                                                {/* reCAPTCHA */}
                                                 {requiresCaptcha && (
-                                                    <div className="pt-2 border-t border-border mt-2">
-                                                        <label className="text-xs font-medium mb-2 block text-orange-500">Security Verification Required</label>
-                                                        <p className="text-[10px] text-muted-foreground mb-2">High request volume detected. Please verify you are human.</p>
-                                                        <ReCAPTCHA
-                                                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                                                            onChange={(token) => setData('g-recaptcha-response', token || '')}
-                                                        />
+                                                    <div className="p-4 sm:p-5 bg-muted/50 border border-border/60 rounded-2xl space-y-3">
+                                                        <label className="text-xs font-bold text-foreground/80 flex items-center gap-1.5">
+                                                            <AlertCircle size={12} className="text-primary" /> Security Verification
+                                                        </label>
+                                                        <p className="text-[10px] text-muted-foreground">Please verify you're human before submitting.</p>
+                                                        <div className="overflow-x-auto">
+                                                            <ReCAPTCHA
+                                                                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                                                onChange={(token) => setData('g-recaptcha-response', token || '')}
+                                                            />
+                                                        </div>
                                                         {/* @ts-ignore */}
                                                         {errors['g-recaptcha-response'] && (
-                                                            <p className="text-sm text-destructive mt-1 font-medium">
+                                                            <p className="text-xs text-destructive font-medium">
                                                                 {/* @ts-ignore */}
                                                                 {errors['g-recaptcha-response']}
                                                             </p>
                                                         )}
                                                     </div>
                                                 )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
 
+                                {/* ═══════════════════════════════════════════
+                                    RIGHT PANEL — Sidebar / Summary
+                                ═══════════════════════════════════════════ */}
+                                <div className="w-full lg:w-[340px] bg-card border-t lg:border-t-0 lg:border-l border-border/60 flex flex-col shrink-0">
+
+                                    {/* Calendar Sidebar */}
+                                    {step === 'calendar' && (
+                                        <div className="p-5 md:p-6 flex flex-col h-full">
+                                            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                                                <Calendar size={14} className="text-primary" /> Date Details
+                                            </h3>
+                                            {selectedDate ? (
+                                                <div className="space-y-4 flex-1">
+                                                    <div className="bg-primary rounded-xl p-4 text-primary-foreground text-center">
+                                                        <div className="text-4xl font-bold">{format(selectedDate, 'd')}</div>
+                                                        <div className="text-sm font-medium opacity-80">{format(selectedDate, 'EEEE')}</div>
+                                                        <div className="text-xs opacity-60">{format(selectedDate, 'MMMM yyyy')}</div>
+                                                    </div>
+
+                                                    <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${isFullyBooked ? 'bg-destructive/5 border-destructive/20' : 'bg-primary/5 border-primary/15'}`}>
+                                                        {isFullyBooked
+                                                            ? <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                                                            : <CheckCircle className="w-4 h-4 text-primary mt-0.5 shrink-0" />}
+                                                        <div>
+                                                            <p className={`font-bold text-xs ${isFullyBooked ? 'text-destructive' : 'text-primary'}`}>
+                                                                {isFullyBooked ? 'Fully Booked' : 'Available'}
+                                                            </p>
+                                                            {!isFullyBooked && availableTimeSlot && (
+                                                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                                    Check-in from {format(availableTimeSlot, 'h:mm a')}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {sortedReservations.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Day Schedule</p>
+                                                            <div className="bg-background rounded-xl border border-border/50 p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                                                                {sortedReservations.map(res => {
+                                                                    const start = parseISO(res.check_in_date);
+                                                                    const end = parseISO(res.check_out_date);
+                                                                    const isStart = isSameDay(start, selectedDate);
+                                                                    const isEnd = isSameDay(end, selectedDate);
+                                                                    return (
+                                                                        <div key={res.id} className="pl-3 border-l-2 border-primary/30 text-xs space-y-0.5">
+                                                                            {isStart && isEnd ? (
+                                                                                <>
+                                                                                    <div className="font-semibold text-foreground">In: {format(start, 'h:mm a')}</div>
+                                                                                    <div className="font-semibold text-muted-foreground">Out: {format(end, 'h:mm a')}</div>
+                                                                                </>
+                                                                            ) : isStart ? (
+                                                                                <div className="font-semibold text-foreground">Check-in: {format(start, 'h:mm a')}</div>
+                                                                            ) : isEnd ? (
+                                                                                <div className="font-semibold text-muted-foreground">Check-out: {format(end, 'h:mm a')}</div>
+                                                                            ) : (
+                                                                                <div className="text-muted-foreground italic">Full Day</div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                                <Info size={10} /> {BUFFER_HOURS}h cleaning buffer applied
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground opacity-50 p-4">
+                                                    <Calendar size={36} strokeWidth={1} className="mb-3" />
+                                                    <p className="text-sm">Select a date on the calendar</p>
+                                                </div>
+                                            )}
+                                            <div className="pt-4 mt-auto border-t border-border/50">
+                                                <Button
+                                                    onClick={confirmDateSelection}
+                                                    disabled={!selectedDate || !!isFullyBooked}
+                                                    className="w-full h-12 text-sm bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-md shadow-primary/20"
+                                                >
+                                                    {isFullyBooked ? 'Date Unavailable' : 'Confirm Date →'}
+                                                </Button>
                                             </div>
                                         </div>
                                     )}
-                                </div>
-                            </div>
 
-                            {/* --- Right Panel: Sidebar / Summary --- */}
-                            <div className="w-full lg:w-[350px] bg-muted/30 border-t lg:border-t-0 lg:border-l border-border flex flex-col flex-shrink-0">
-                                {step === 'calendar' ? (
-                                    <div className="p-4 md:p-8 flex flex-col h-full">
-                                        <h3 className="font-serif text-lg md:text-xl font-bold mb-4 text-foreground">Selected Date</h3>
-                                        {selectedDate ? (
-                                            <div className="space-y-4 md:space-y-6 flex-1">
-                                                <div className="bg-card p-4 md:p-6 rounded-2xl border border-border shadow-sm">
-                                                    <div className="text-3xl md:text-4xl font-bold text-primary mb-1">{format(selectedDate, 'd')}</div>
-                                                    <div className="text-base md:text-lg font-medium text-muted-foreground">{format(selectedDate, 'EEEE')}</div>
-                                                    <div className="text-xs md:text-sm text-muted-foreground">{format(selectedDate, 'MMMM yyyy')}</div>
-                                                </div>
-                                                <div className={`p-4 rounded-xl border flex items-start gap-3 ${isFullyBooked ? 'bg-destructive/5 border-destructive/20' : 'bg-primary/5 border-primary/20'}`}>
-                                                    {isFullyBooked ? <XCircle className="w-5 h-5 text-destructive mt-0.5" /> : <CheckCircle className="w-5 h-5 text-primary mt-0.5" />}
-                                                    <div>
-                                                        <p className={`font-bold text-sm ${isFullyBooked ? 'text-destructive' : 'text-primary'}`}>{isFullyBooked ? 'Fully Booked' : 'Available'}</p>
-                                                        {!isFullyBooked && (<p className="text-[10px] md:text-xs text-muted-foreground mt-1">Check-in allowed from {format(availableTimeSlot!, 'h:mm a')}</p>)}
+                                    {/* Booking Summary Sidebar */}
+                                    {step === 'form' && (
+                                        <div className="p-5 md:p-6 flex flex-col h-full">
+                                            <h3 className="text-sm font-bold text-foreground mb-5 flex items-center gap-2">
+                                                <CreditCard size={14} className="text-primary" /> Booking Summary
+                                            </h3>
+                                            <div className="space-y-3 flex-1">
+                                                {/* Room Charge */}
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-muted-foreground font-medium">Room Charge</span>
+                                                        <span className="font-bold text-foreground">₱{priceDetails.roomTotal.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="pl-3 border-l-2 border-border/50 space-y-1">
+                                                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                                                            <span>Duration</span>
+                                                            <span className="font-semibold">{priceDetails.nights} Night(s)</span>
+                                                        </div>
+                                                        {priceDetails.lateHours > 0 && (
+                                                            <div className="flex justify-between text-[10px] text-destructive font-semibold">
+                                                                <span>Late Fee ({priceDetails.lateHours}h)</span>
+                                                                <span>+₱{(priceDetails.lateHours * (selectedRoom?.room_category?.price ?? 0) * 0.10).toLocaleString()}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                {sortedReservations.length > 0 && (
-                                                    <div className="space-y-3">
-                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Day Schedule</p>
-                                                        <div className="bg-background rounded-xl border border-border p-3 md:p-4 space-y-3 max-h-[200px] md:max-h-[300px] overflow-y-auto">
-                                                            {sortedReservations.map(res => {
-                                                                const start = parseISO(res.check_in_date);
-                                                                const end = parseISO(res.check_out_date);
-                                                                const isStart = isSameDay(start, selectedDate);
-                                                                const isEnd = isSameDay(end, selectedDate);
-                                                                return (
-                                                                    <div key={res.id} className="relative pl-3 border-l-2 border-border text-xs">
-                                                                        {isStart && isEnd ? (
-                                                                            <div className="space-y-0.5"><div className="font-medium text-blue-500">In: {format(start, 'h:mm a')}</div><div className="font-medium text-orange-500">Out: {format(end, 'h:mm a')}</div></div>
-                                                                        ) : isStart ? (
-                                                                            <div className="font-medium text-blue-500">Check-in: {format(start, 'h:mm a')}</div>
-                                                                        ) : isEnd ? (
-                                                                            <div className="font-medium text-orange-500">Check-out: {format(end, 'h:mm a')}</div>
-                                                                        ) : (
-                                                                            <div className="text-muted-foreground italic">Full Day</div>
-                                                                        )}
-                                                                    </div>
-                                                                )
-                                                            })}
-                                                        </div>
-                                                        <p className="text-[10px] text-muted-foreground flex items-center gap-1.5"><Info size={10} /> {BUFFER_HOURS}h cleaning buffer</p>
+
+                                                {priceDetails.servicesTotal > 0 && (
+                                                    <div className="flex justify-between items-center text-sm pt-3 border-t border-dashed border-border/50">
+                                                        <span className="text-muted-foreground font-medium">Add-on Services</span>
+                                                        <span className="font-bold text-foreground">₱{priceDetails.servicesTotal.toLocaleString()}</span>
                                                     </div>
                                                 )}
-                                            </div>
-                                        ) : (
-                                            <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground p-4 opacity-60">
-                                                <Calendar size={40} strokeWidth={1} className="mb-3" />
-                                                <p className="text-sm">Select a date on the calendar.</p>
-                                            </div>
-                                        )}
-                                        <div className="pt-4 md:pt-6 mt-auto border-t border-border">
-                                            <Button onClick={confirmDateSelection} disabled={!selectedDate || isFullyBooked} className="w-full h-12 md:h-14 text-sm md:text-base bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 rounded-xl">
-                                                {isFullyBooked ? 'Unavailable' : 'Confirm Date'}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : step === 'form' ? (
-                                    <div className="p-4 md:p-8 flex flex-col h-full bg-card shadow-inner lg:shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)] z-20">
-                                        <h3 className="font-serif text-lg md:text-xl font-bold mb-4 md:mb-6 text-foreground flex items-center gap-2"><CreditCard size={18} /> Payment</h3>
-                                        <div className="space-y-4 md:space-y-6 flex-1">
-                                            <div className="space-y-2 md:space-y-3">
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-muted-foreground">Room Charge</span>
-                                                    <span className="font-medium text-foreground">₱{priceDetails.roomTotal.toLocaleString()}</span>
-                                                </div>
-                                                <div className="pl-3 text-xs text-muted-foreground border-l-2 border-muted space-y-1">
-                                                    <div className="flex justify-between"><span>Duration</span><span>{priceDetails.nights} Night(s)</span></div>
-                                                    {priceDetails.lateHours > 0 && (<div className="flex justify-between text-orange-500"><span>Late Fee ({priceDetails.lateHours}h)</span><span>+₱{(priceDetails.lateHours * (selectedRoom?.room_category?.price ?? 0) * 0.10).toLocaleString()}</span></div>)}
-                                                </div>
-                                            </div>
-                                            {priceDetails.servicesTotal > 0 && (
-                                                <div className="flex justify-between items-center text-sm pt-3 border-t border-border border-dashed">
-                                                    <span className="text-muted-foreground">Add-on Services</span>
-                                                    <span className="font-medium text-foreground">₱{priceDetails.servicesTotal.toLocaleString()}</span>
-                                                </div>
-                                            )}
-                                            <div className="bg-primary/5 rounded-xl p-3 md:p-4 mt-auto border border-primary/10">
-                                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Total Due</p>
-                                                <p className="text-2xl md:text-3xl font-serif font-bold text-primary">₱{priceDetails.grandTotal.toLocaleString()}</p>
-                                            </div>
-                                        </div>
-                                        <div className="pt-4 md:pt-6 mt-auto flex gap-3">
-                                            <Button variant="outline" onClick={() => setStep('calendar')} className="h-12 md:h-14 px-4 md:px-6 rounded-xl border-border font-bold">Back</Button>
-                                            {/* Disable button if localError is present AND recaptcha logic checks could be added */}
-                                            <Button onClick={submit} disabled={processing || !!localError} className="flex-1 h-12 md:h-14 text-sm md:text-base bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 rounded-xl">
-                                                {processing ? <Loader2 className="animate-spin size-5" /> : 'Confirm Booking'}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="p-8 flex flex-col h-full justify-center items-center text-center text-muted-foreground hidden lg:flex">
-                                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4"><Bed size={32} strokeWidth={1.5} className="opacity-50" /></div>
-                                        <h3 className="text-lg font-bold text-foreground mb-2">Select a Room</h3>
-                                        <p className="text-sm max-w-[200px]">Choose a room from the list.</p>
-                                    </div>
-                                )}
-                            </div>
 
-                        </Dialog.Panel>
+                                                {/* Date info */}
+                                                {data.check_in_date && data.check_out_date && (
+                                                    <div className="text-[10px] text-muted-foreground pt-3 border-t border-border/30 space-y-0.5">
+                                                        <div className="flex justify-between">
+                                                            <span>Check-in</span>
+                                                            <span className="font-semibold text-foreground">{format(new Date(data.check_in_date), 'MMM d, h:mm a')}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>Check-out</span>
+                                                            <span className="font-semibold text-foreground">{format(new Date(data.check_out_date), 'MMM d, h:mm a')}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Grand Total */}
+                                                <div className="bg-primary/8 border border-primary/15 rounded-xl p-4 mt-auto">
+                                                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Total Due</p>
+                                                    <p className="text-3xl font-bold text-primary">₱{priceDetails.grandTotal.toLocaleString()}</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-1">Inclusive of all charges</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-4 mt-auto border-t border-border/50 flex gap-3">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => setStep('calendar')}
+                                                    className="h-12 px-5 rounded-xl border-border text-foreground font-semibold hover:bg-muted"
+                                                >
+                                                    Back
+                                                </Button>
+                                                <Button
+                                                    onClick={submit}
+                                                    disabled={
+                                                        processing ||
+                                                        !!localError ||
+                                                        serviceCounts.extraPerson > (selectedRoom?.max_extra_person ?? 0) ||
+                                                        serviceCounts.extraBed > (selectedRoom?.room_category?.max_extra_bed ?? 0) ||
+                                                        (requiresCaptcha && !data['g-recaptcha-response'])
+                                                    }
+                                                    className="flex-1 h-12 text-sm bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-md shadow-primary/20"
+                                                >
+                                                    {processing ? <Loader2 className="animate-spin w-4 h-4" /> : 'Confirm Booking'}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Placeholder when on Room step */}
+                                    {step === 'room' && (
+                                        <div className="p-8 flex-1 flex flex-col items-center justify-center text-center text-muted-foreground hidden lg:flex">
+                                            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                                                <Bed size={28} strokeWidth={1.5} className="opacity-40" />
+                                            </div>
+                                            <h4 className="text-sm font-bold text-foreground/60 mb-1">No Room Selected</h4>
+                                            <p className="text-xs max-w-[180px] opacity-60">Choose a room from the list to get started.</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                            </Dialog.Panel>
+                        </Transition.Child>
                     </div>
                 </div>
             </Dialog>

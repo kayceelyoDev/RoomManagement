@@ -22,10 +22,9 @@ class GuestPage extends Controller
     public function getRooms()
     {
         $rooms = Rooms::latest()
-           
-            ->select('id', 'room_name','room_description',  'room_categories_id', 'img_url', 'max_extra_person', 'status')
+            ->select('id', 'room_name','room_description', 'type_of_bed','room_categories_id', 'img_url', 'max_extra_person', 'status')
             ->with([
-                'roomCategory:id,room_category,price,room_capacity',
+                'roomCategory:id,room_category,price,room_capacity,max_extra_bed',
                 'reservations' => fn($q) => $q->where('check_out_date', '>=', now())
                     ->select('id', 'room_id', 'check_in_date', 'check_out_date', 'status')
             ])
@@ -50,9 +49,9 @@ class GuestPage extends Controller
 
         $rooms = Rooms::query()
        
-            ->select('id', 'room_name','room_description', 'room_categories_id', 'img_url', 'max_extra_person', 'status')
+            ->select('id', 'room_name','room_description', 'room_categories_id', 'img_url', 'max_extra_person', 'status', 'type_of_bed')
             ->with([
-                'roomCategory:id,room_category,price,room_capacity',
+                'roomCategory:id,room_category,max_extra_bed,price,room_capacity',
                 'reservations' => fn($q) => $q->where('check_out_date', '>=', now())
                     ->select('id', 'room_id', 'check_in_date', 'check_out_date', 'status')
             ])
