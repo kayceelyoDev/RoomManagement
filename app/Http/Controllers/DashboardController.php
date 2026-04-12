@@ -22,6 +22,7 @@ class DashboardController extends Controller
             'roomStatus' => fn() => $this->getRoomStatus(),
             'guestMovements' => fn() => $this->getGuestMovements(),
             'bookingVolume' => fn() => $this->getBookingVolume(),
+            'dateRanges' => fn() => $this->getDateRanges(),
         ]);
     }
 
@@ -33,6 +34,7 @@ class DashboardController extends Controller
             'topRooms' => fn() => $this->getTopRooms(),
             'reservationStatus' => fn() => $this->getReservationStatus(),
             'avgStay' => fn() => $this->getAvgStay(),
+            'dateRanges' => fn() => $this->getDateRanges(),
         ]);
     }
 
@@ -215,5 +217,25 @@ class DashboardController extends Controller
             ->value('days');
 
         return round($val ?? 0, 1);
+    }
+
+    private function getDateRanges()
+    {
+        $today = Carbon::today();
+        $sevenDaysFromNow = $today->copy()->addDays(7);
+        $thirtyDaysAgo = Carbon::now()->subDays(30);
+
+        return [
+            'reservation_traffic' => [
+                'from' => $today->format('M d, Y'),
+                'to' => $sevenDaysFromNow->format('M d, Y'),
+                'period' => 'Next 7 Days'
+            ],
+            'revenue_data' => [
+                'from' => $thirtyDaysAgo->format('M d, Y'),
+                'to' => now()->format('M d, Y'),
+                'period' => 'Last 30 Days'
+            ]
+        ];
     }
 }

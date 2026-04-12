@@ -34,9 +34,21 @@ interface Props {
     };
     guestMovements: any[];
     bookingVolume: any[];
+    dateRanges?: {
+        reservation_traffic: {
+            from: string;
+            to: string;
+            period: string;
+        };
+        revenue_data: {
+            from: string;
+            to: string;
+            period: string;
+        };
+    };
 }
 
-export default function Dashboard({ stats, roomStatus, guestMovements, bookingVolume }: Props) {
+export default function Dashboard({ stats, roomStatus, guestMovements, bookingVolume, dateRanges }: Props) {
     const totalRooms = roomStatus.available + roomStatus.booked + roomStatus.occupied + roomStatus.unavailable;
 
     // --- AUTO UPDATE LOGIC ---
@@ -238,10 +250,17 @@ export default function Dashboard({ stats, roomStatus, guestMovements, bookingVo
                 </div>
 
                 <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
-                    {/* --- INVENTORY BAR CHART --- */}
+                    {/* --- RESERVATION TRAFFIC CHART --- */}
                     <div className="lg:col-span-4 bg-card rounded-2xl border border-border p-6 shadow-sm relative overflow-hidden">
                         {isRefreshing && <LoadingOverlay />}
-                        <h3 className="font-serif font-bold text-lg mb-6">Staffing Load (7-Day Forecast)</h3>
+                        <div className="mb-6">
+                            <h3 className="font-serif font-bold text-lg mb-2">Reservation Traffic</h3>
+                            {dateRanges?.reservation_traffic && (
+                                <p className="text-xs text-muted-foreground">
+                                    {dateRanges.reservation_traffic.from} to {dateRanges.reservation_traffic.to}
+                                </p>
+                            )}
+                        </div>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={bookingVolume}>
