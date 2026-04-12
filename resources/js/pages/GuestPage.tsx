@@ -145,12 +145,6 @@ export default function GuestPage({ rooms = [], services = [] }: GuestPageProps)
                         >
                             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
-
-                        <div className="h-6 w-px bg-border hidden sm:block"></div>
-
-                        <Link href={logout()} method="post" as="button" className="text-muted-foreground hover:text-destructive transition pl-1" title="Log Out">
-                            <LogOut size={20} />
-                        </Link>
                     </div>
                 </div>
             </header>

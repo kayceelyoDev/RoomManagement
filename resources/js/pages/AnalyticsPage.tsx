@@ -35,6 +35,18 @@ interface Props {
         count: number;
     }[];
     avgStay: number;
+    dateRanges?: {
+        reservation_traffic: {
+            from: string;
+            to: string;
+            period: string;
+        };
+        revenue_data: {
+            from: string;
+            to: string;
+            period: string;
+        };
+    };
 }
 
 const CHART_COLORS = [
@@ -45,7 +57,7 @@ const CHART_COLORS = [
     '#E57373', // Destructive
 ];
 
-export default function AnalyticsPage({ revenueData, categoryPerformance, topRooms, reservationStatus, avgStay }: Props) {
+export default function AnalyticsPage({ revenueData, categoryPerformance, topRooms, reservationStatus, avgStay, dateRanges }: Props) {
     
     // --- AUTO UPDATE LOGIC ---
     const [isAutoRefresh, setIsAutoRefresh] = useState(false);
@@ -177,7 +189,13 @@ export default function AnalyticsPage({ revenueData, categoryPerformance, topRoo
                                 <h3 className="font-serif font-bold text-lg flex items-center gap-2">
                                     <BarChart3 className="size-5 text-primary"/> Revenue Trends
                                 </h3>
-                                <p className="text-xs text-muted-foreground">Daily income visualization</p>
+                                {dateRanges?.revenue_data ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        {dateRanges.revenue_data.from} to {dateRanges.revenue_data.to}
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground">Daily income visualization</p>
+                                )}
                             </div>
                         </div>
                         

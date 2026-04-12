@@ -285,6 +285,7 @@ export default function AddReservation({
             newServices.push({ id, quantity: 1, price: masterService.services_price });
         }
         setData('selected_services', newServices);
+        clearErrors('selected_services');
     };
 
     // --- Price Calculation ---
@@ -339,7 +340,13 @@ export default function AddReservation({
         if (localError) return;
         if (serviceCounts.extraPerson > maxP || serviceCounts.extraBed > maxB) return;
 
-        post(reservationRoute.store.url(), { onSuccess: () => onClose() });
+        post(reservationRoute.store.url(), {
+            data: {
+                ...data,
+                selected_services: data.selected_services.length ? data.selected_services : [],
+            },
+            onSuccess: () => onClose(),
+        });
     };
 
     const startingDayIndex = startOfMonth(currentMonth).getDay();
@@ -754,13 +761,13 @@ export default function AddReservation({
                                                         </p>
                                                         <ul className="text-[10px] text-muted-foreground space-y-1.5">
                                                             <li className="flex items-center justify-between">
-                                                                <span className="text-muted">Extra Person</span>
+                                                                <span className="text-foreground">Extra Person</span>
                                                                 <span className="font-semibold text-foreground">{serviceCounts.extraPerson} <span className="text-muted-foreground font-normal">/ {selectedRoom?.max_extra_person || 0} max</span>
                                                                     {serviceCounts.extraPerson > (selectedRoom?.max_extra_person || 0) && <span className="ml-1 text-destructive font-bold">✕</span>}
                                                                 </span>
                                                             </li>
                                                             <li className="flex items-center justify-between">
-                                                                <span>Extra Bed</span>
+                                                                <span className='text-foreground'>Extra Bed</span>
                                                                 <span className="font-semibold text-foreground">{serviceCounts.extraBed} <span className="text-muted-foreground font-normal">/ {selectedRoom?.room_category?.max_extra_bed || 0} max</span>
                                                                     {serviceCounts.extraBed > (selectedRoom?.room_category?.max_extra_bed || 0) && <span className="ml-1 text-destructive font-bold">✕</span>}
                                                                 </span>
