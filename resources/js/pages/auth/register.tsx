@@ -50,7 +50,7 @@ export default function Register() {
             <div className="relative hidden lg:flex flex-col justify-end p-12 overflow-hidden bg-[#2C3930]">
                 <div className="absolute inset-0">
                     <img 
-                        src="/img/pool.jpg" 
+                        src="/img/beach3.jpg" 
                         alt="Paradise view" 
                         className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-[25s]" 
                     />

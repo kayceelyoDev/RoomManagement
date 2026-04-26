@@ -392,7 +392,7 @@ export default function Welcome({ canRegister = true, rooms = [] }: WelcomeProps
                                 Escape the ordinary and immerse yourself in the extraordinary. Estaca Bay offers a sanctuary where the rhythm of the waves sets the pace of your day.
                             </p>
                             <ul className="grid grid-cols-2 gap-4 pt-4">
-                                {['Private Beach Access', 'Infinity Pools', 'Gourmet Dining', 'Sunset Views'].map(item => (
+                                {['Private Beach Access', 'Infinity Pools', 'Gourmet Dining', 'Sunrise Views'].map(item => (
                                     <li key={item} className="flex items-center gap-3 text-[#2C3930] text-sm font-medium">
                                         <div className="w-2 h-2 rounded-full bg-[#D8E983]" /> {item}
                                     </li>
@@ -402,7 +402,7 @@ export default function Welcome({ canRegister = true, rooms = [] }: WelcomeProps
                         <div className="lg:w-1/2 grid grid-cols-2 gap-4">
                             <img src="/img/beach3.jpg" className="w-full h-64 object-cover rounded-2xl shadow-lg mt-8 hover:opacity-90 transition" alt="Beachfront" />
                             <img src="/img/pic1.jpg" className="w-full h-64 object-cover rounded-2xl shadow-lg hover:opacity-90 transition" alt="Recreation" />
-                            <img src="/img/beach4.jpg" className="col-span-2 w-full h-48 object-cover rounded-2xl shadow-lg hover:opacity-90 transition" alt="Sunset view" />
+                            <img src="/img/beach2.jpg" className="col-span-2 w-full h-48 object-cover rounded-2xl shadow-lg hover:opacity-90 transition" alt="Sunset view" />
                         </div>
                     </div>
                 </section>
@@ -416,10 +416,10 @@ export default function Welcome({ canRegister = true, rooms = [] }: WelcomeProps
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-[#2C3930]">
                             {[
-                                { icon: Phone, title: "Call Us", text: "0920 281 6722" },
+                                { icon: Phone, title: "Call Us", text: "0920 281 0134" },
                                 { icon: Facebook, title: "Facebook", text: "Estaca Bay Resort" },
-                                { icon: MapPin, title: "Location", text: "Estaca, Cebu" },
-                                { icon: Mail, title: "Email", text: "estacabay@gmail.com" },
+                                { icon: MapPin, title: "Location", text: "Brgy. Estaca, Compostela, Cebu" },
+                                { icon: Mail, title: "Email", text: "marketing.menca@gmail.com" },
                             ].map((item, idx) => (
                                 <div key={idx} className="bg-white p-8 rounded-2xl flex flex-col items-center gap-4 shadow-lg hover:shadow-xl hover:-translate-y-1 transition duration-300 border border-[#2C3930]/5 group">
                                     <div className="w-12 h-12 bg-[#FFFDE1] rounded-full flex items-center justify-center text-[#2C3930] group-hover:bg-[#D8E983] transition-colors">

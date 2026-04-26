@@ -61,7 +61,7 @@ export default function Login({
             <div className="relative hidden lg:flex flex-col justify-end p-12 overflow-hidden bg-[#2C3930]">
                 <div className="absolute inset-0">
                     <img 
-                        src="/img/beach1.jpg" 
+                        src="/img/resort1.jpg" 
                         alt="Resort beach view" 
                         className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-[25s]" 
                     />
