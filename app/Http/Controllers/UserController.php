@@ -13,6 +13,8 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    use PasswordValidationRules;
+
     public function index(Request $request)
     {
         
