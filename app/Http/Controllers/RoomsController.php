@@ -123,10 +123,12 @@ class RoomsController extends Controller
     public function destroy(Rooms $room, RoomServices $services)
     {   
         $this->authorizeManager();
-        // Efficient Check: Don't load all reservations, just check existence
-        if ($room->reservations()->exists()) {
+        // Only block deletion if there are ACTIVE reservations (pending, confirmed, checked_in)
+        // Allow deletion if reservations are cancelled or checked_out
+        $activeStatuses = ['pending', 'confirmed', 'checked_in'];
+        if ($room->reservations()->whereIn('status', $activeStatuses)->exists()) {
             return redirect()->back()->withErrors([
-                'error' => 'Cannot delete this room because it has existing reservations.'
+                'error' => 'Cannot delete this room because it has active reservations.'
             ]);
         }
 

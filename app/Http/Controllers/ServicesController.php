@@ -66,11 +66,12 @@ class ServicesController extends Controller
      */
     public function destroy(Services $service)
     {
-        // Safety Check: Don't delete service if it's attached to reservations
-        // This assumes you have a 'reservations' relationship defined in your Service model
-        if ($service->reservations()->exists()) {
+        // Only block deletion if there are ACTIVE reservations (pending, confirmed, checked_in)
+        // Allow deletion if reservations are cancelled or checked_out
+        $activeStatuses = ['pending', 'confirmed', 'checked_in'];
+        if ($service->reservations()->whereIn('status', $activeStatuses)->exists()) {
             return redirect()->back()->withErrors([
-                'error' => 'Cannot delete this service because it is part of existing reservations.'
+                'error' => 'Cannot delete this service because it is part of active reservations.'
             ]);
         }
 
